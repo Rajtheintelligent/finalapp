@@ -51,6 +51,11 @@ if board == "SSC" and subject == "Science":
                     "Kahoot": "https://example.com/kahoot-gravitation",
                     "Blooket": "https://example.com/blooket-gravitation"
                 }
+                "Acceleration due to Gravity": {
+                    "Form": "https://example.com/form-gravitation",
+                    "Kahoot": "https://example.com/kahoot-gravitation",
+                    "Blooket": "https://example.com/blooket-gravitation"
+                }
             }
         elif chapter == "Periodic Classification of Elements":
             subtopics = {
