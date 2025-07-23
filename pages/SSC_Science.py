@@ -50,7 +50,7 @@ if board == "SSC" and subject == "Science":
                     "Form": "https://example.com/form-gravitation",
                     "Kahoot": "https://example.com/kahoot-gravitation",
                     "Blooket": "https://example.com/blooket-gravitation"
-                }
+                },
                 "Acceleration due to Gravity": {
                     "Form": "https://example.com/form-gravitation",
                     "Kahoot": "https://example.com/kahoot-gravitation",
