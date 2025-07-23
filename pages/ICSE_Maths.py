@@ -10,7 +10,7 @@ st.set_page_config(
 
 # --- Sidebar ---
 st.sidebar.title("🔧 Select Parameters")
-board = st.sidebar.selectbox("Select Board", ["SSC", "ICSE"])
+board = st.sidebar.selectbox("Select Board", ["SSC", "ICSE"], index=1)
 subject = st.sidebar.selectbox("Select Subject", ["Mathematics", "Science", "English", "Social Studies"])
 
 branch = None
