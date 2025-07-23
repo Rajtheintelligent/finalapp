@@ -14,7 +14,7 @@ board = st.sidebar.selectbox("Select Board", ["SSC", "ICSE"])
 subject = st.sidebar.selectbox("Select Subject", ["Mathematics", "Science", "English", "Social Studies"])
 
 branch = None
-if subject == "Mathematics" and board == "ICSE":
+if board == "ICSE" and subject == "Mathematics":
     branch = st.sidebar.selectbox("Select Branch", ["Algebra", "Geometry", "Mensuration", "Trigonometry", "Statistics & Probability", "Commercial Math"])
 
 # Spacer to push feedback button to bottom
@@ -220,4 +220,5 @@ if subject == "Mathematics" and board == "ICSE":
         show_subtopics(subtopics)
 
 else:
-    st.info("Content for the selected subject is coming soon.")
+    st.info("Please select 'Mathematics' as the subject under ICSE Board to view content.")
+
