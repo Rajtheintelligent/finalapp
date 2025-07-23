@@ -1,45 +1,46 @@
 import streamlit as st
 
-# --- Page Config ---
+# ------------------------ Page Config ------------------------
 st.set_page_config(
-    page_title="Education Hub - Home",
+    page_title="Grade 10 Assessment Hub",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- Sidebar ---
-st.sidebar.title("🔧 Select Parameters")
+# ------------------------ Sidebar ------------------------
+st.sidebar.title("🔧 Select Options")
 board = st.sidebar.selectbox("Select Board", ["SSC", "ICSE"])
 subject = st.sidebar.selectbox("Select Subject", ["Mathematics", "Science", "English", "Social Studies"])
+st.sidebar.markdown("""
+---
+📬 **[Feedback Form](https://forms.gle/your-feedback-form)**
+""")
 
-# Spacer
-st.sidebar.markdown("<br><br><br><br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
+# ------------------------ Main Page ------------------------
+st.title("📘 Grade 10 Assessment Web App")
+st.markdown("""
+Welcome to the Grade 10 Assessment Platform. Select a board and subject from the sidebar to begin.
 
-# --- Feedback Button ---
-st.sidebar.link_button("📩 Feedback Form", "https://example.com/feedback-form")
+Use the navigation in the sidebar to access subject-wise assessments, tools, and subtopics.
+""")
 
-# --- Main Area ---
-st.title("📘 Welcome to the Smart Learning Hub")
-st.markdown("Choose your Board and Subject from the sidebar to begin learning and testing your knowledge.")
-
-# --- Navigation Buttons ---
-st.subheader("➡️ Navigate to Your Subject Page")
-
+# ------------------------ Page Guide ------------------------
 if board == "SSC":
     if subject == "Mathematics":
-        st.page_link("pages/SSC_Maths.py", label="📗 Go to SSC Mathematics", icon="📐")
+        st.markdown("👉 Go to **SSC_Maths** page in the sidebar for Algebra and Geometry assessments.")
     elif subject == "Science":
-        st.page_link("pages/SSC_Science.py", label="🔬 Go to SSC Science", icon="🧪")
-    else:
-        st.info(f"🚧 {subject} for SSC is coming soon!")
+        st.markdown("👉 Go to **SSC_Science** page for Physics, Chemistry and Biology.")
+    elif subject == "English":
+        st.markdown("👉 Go to **SSC_English** page for Grammar and Language Tools.")
+    elif subject == "Social Studies":
+        st.markdown("👉 Go to **SSC_Social_Studies** page for History and Geography.")
 
 elif board == "ICSE":
     if subject == "Mathematics":
-        st.page_link("pages/ICSE_Maths.py", label="📗 Go to ICSE Mathematics", icon="🧮")
+        st.markdown("👉 Go to **ICSE_Maths** page in the sidebar for Algebra and Geometry assessments.")
     elif subject == "Science":
-        st.page_link("pages/ICSE_Science.py", label="🔬 Go to ICSE Science", icon="🧪")
-    else:
-        st.info(f"🚧 {subject} for ICSE is coming soon!")
-
-else:
-    st.warning("Please select both Board and Subject to proceed.")
+        st.markdown("👉 Go to **ICSE_Science** page for Physics, Chemistry and Biology.")
+    elif subject == "English":
+        st.markdown("👉 Go to **ICSE_English** page for Grammar and Language Tools.")
+    elif subject == "Social Studies":
+        st.markdown("👉 Go to **ICSE_Social_Studies** page for History and Geography.")
