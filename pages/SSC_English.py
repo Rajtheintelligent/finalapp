@@ -9,8 +9,8 @@ st.set_page_config(
 
 # --- Sidebar ---
 st.sidebar.title("🔧 Select Parameters")
-board = st.sidebar.selectbox("Select Board", ["SSC", "ICSE"])
-subject = st.sidebar.selectbox("Select Subject", ["Mathematics", "Science", "English", "Social Studies"])
+board = st.sidebar.selectbox("Select Board", ["SSC", "ICSE"], index=1)
+subject = st.sidebar.selectbox("Select Subject", ["Mathematics", "Science", "English", "Social Studies"], index=2)
 
 # Spacer to push feedback button down
 st.sidebar.markdown("<br><br><br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
