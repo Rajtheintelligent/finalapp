@@ -1,0 +1,16 @@
+import json
+creds_dict = st.secrets["gsheets"]
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+{
+  "type": "service_account",
+  "project_id": "sscmathsform",
+  "private_key_id": "29171e2564af193cdfe182de967d15f5f1abbc82",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDCCuCm78q7bwQt\nHMzvGhOSANZaJsQyjxHY66xI+NMbajisuAAXYkz5ApB9Kfs8JEBgEcKSOun/FdhO\nViATu+5LvfacCDJONTRKAzqP9PWK58oqPGlyrhfS9l/kkqhNrwzReDsePvhWX5K3\nECfz3qn1uwbhgQFsE4a0MoHkdZRdc3eu6bOThwLuA5OUBkk5bMozss7j7ffDu/Qx\nXOw1gKQYf+Uuph9Tp3xhYm2rijw/zmWJwwEiPsE7iFeUYSEpmEFYL/QZ54WaZQ2V\ncNW2Hy1akV8h4oLJ9OXXcpLr82NuTUcYqDuWf5DkeQ/1HcFNC1qq7eT1MPo8v9Jb\n8t+YHYxTAgMBAAECggEAEZHGkZb4tkvxBtyquaOUzg2BWxxTe3h01z1PljPheYP+\nqbTnXTarXYib6JlahDGMGqbBBViMQ2qI8V7e/Kpxgy4qHCqp02cB2wm7zbkSWodu\nSLC7o4Sb56AjQqD82DvXX0gRokV1WuzAbg7qbyxkGznZ/6UcqdqCweIo3LTAwE1B\nt0WNxY0b/k+Aqm2MEkY4uYxraz2QstJR4f2f84T9RpE4Dp7vUJyQ2ZHu74u+CgEU\nOMTNv1IfJsYUVnyfTYHclrUpR7w7Cd5ww3vaoSsM6vrLbIiIJRjBRZyt98AqrSX9\n3Xs7XJHl9CeKyIjjapTsQonijknDu8RioO39aNIM0QKBgQDw4PGX3+IL5rkZKByY\nJP1JYJOPtLHjMrZHUEjpPJ24XtnDWwdId6PNUKPdNHbcS5OxJAO/t2NaVGv3J/pL\nYDgChRDJfBi/VGEzKqZu5+1TS6rPpoknDXxjqGa2DigXkEr2xmNUwb1cMD07K0y2\n0so600vTtWuQUSsUpbXXT3wKdwKBgQDOOT/vvH5Uf1TgUvfSDCPKWOWRgzs4W2WX\nS5Jq+r55rc6SWIn2MxQZynoIw+yQzQJEJotKjter492D3HDwcTs54czwmJDKUxDw\n2pYF89Pi8anM245Odvl8IM/UDAkkdzfD4FQ5PUdRLMrCwIMhR2td0Puq6SE3o0Vu\nMGM9qFdoBQKBgQDcGA1oAi9fRIAYlmgaNKIiq9Xo1ug7epjG7HrScoqCblh3gfNT\nqc3HykkP0+JPQ9c9YnTydjSX0s+b07GFsfM7ii5ei79pA0aVJAFTESPumhMHDVoA\njvf7b2H6M1E6xqNYfMlCJoxJceJg8B12Z4BU48BDP197TE8a3Jcclwn13QKBgHJw\nMprG7xPU1TTm1b8qHXJcgoiNWn+buHSM62OSYcEEQm3T1DtbfPwS8EWM8+om2esX\nuJRXUDeC65oQ6luDempUc3XQNAkSr4P4yOfktuBpWuDjtcS1IR1Q2APD6g7iWX/J\nLPPWnYzeXmZUjnAZQet93Sqq1FQbtpu/HlNI57hBAoGBALVZhkkNioyvn9S8cVk7\n3lHdYk/Um4flFBtR8yhzeXLzid4R2LyKj2H8WqVYq1I80hSvzvyBOfMDG1uPofLv\nDvg6EYXh/pYfiBuohiMvbnc9ziOYKCTWnOnY4zZJ4EGLHfyAz70+LfcdrP2ReBKC\noWv4f1U/exSJOTxliSBBkbHy\n-----END PRIVATE KEY-----\n",
+  "client_email": "streamlit-form-reader@sscmathsform.iam.gserviceaccount.com",
+  "client_id": "106839941725222234227",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/streamlit-form-reader%40sscmathsform.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
