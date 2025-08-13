@@ -214,10 +214,10 @@ elif subject == "Mathematics" and branch == "Geometry":
     if chapter == "Similarity":
         st.subheader("📂 Subtopics in Similarity")
         subtopics = {
-            "Basic Concepts of Similarity": {
-                "Form": "https://example.com/form-similarity-basic",
-                "Kahoot": "https://example.com/kahoot-similarity-basic",
-                "Blooket": "https://example.com/blooket-similarity-basic"
+            "Ratios of areas of two triangles": {
+                "Form": "https://example.com/form-ratios of areas of two triangles",
+                "Kahoot": "https://example.com/kahoot-ratios of areas of two triangles",
+                "Blooket": "https://example.com/blooket-ratios of areas of two triangles"
             },
             "Criteria for Similarity of Triangles": {
                 "Form": "https://example.com/form-similarity-criteria",
@@ -370,3 +370,4 @@ elif subject == "Mathematics" and branch == "Geometry":
 
 else:
     st.info("Content for the selected subject is coming soon.")
+
