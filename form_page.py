@@ -32,19 +32,32 @@ def _get_gspread_client():
         st.stop()
     return gc
 
-def _open_spreadsheet():
+def _open_spreadsheet(subject):
     try:
-        spreadsheet_id = st.secrets["google"]["spreadsheet_id"]
+        # Read URL or key from secrets
+        sheet_entry = st.secrets["google"]["spreadsheet_ids"][subject]
     except Exception:
-        st.error("Please add your spreadsheet id to st.secrets['google']['spreadsheet_id'].")
+        st.error(f"Please add spreadsheet ID for '{subject}' in st.secrets['google']['spreadsheet_ids'].")
         st.stop()
+
+    # Extract spreadsheet key if a URL is given
+    if "https://docs.google.com" in sheet_entry:
+        try:
+            spreadsheet_id = sheet_entry.split("/d/")[1].split("/")[0]
+        except Exception:
+            st.error(f"Could not parse spreadsheet ID from URL: {sheet_entry}")
+            st.stop()
+    else:
+        spreadsheet_id = sheet_entry  # already just the key
+
     gc = _get_gspread_client()
     try:
         sh = gc.open_by_key(spreadsheet_id)
     except Exception as e:
-        st.error(f"Unable to open spreadsheet. Make sure the service account email has view/edit access. Error: {e}")
+        st.error(f"Unable to open spreadsheet for '{subject}'. Ensure service account email has access. Error: {e}")
         st.stop()
     return sh
+
 
 def send_telegram_message(text, chat_id):
     token = st.secrets.get("telegram", {}).get("bot_token")
@@ -81,16 +94,18 @@ def append_row_to_sheet(sh, worksheet_name, row_list):
 # FORM / REMEDIAL LOGIC
 # -------------------------
 def run(subtopic_id=None):
-    """
-    Entry point for rendering the form for a given subtopic.
-    If subtopic_id is None, the function will try to read from query params,
-    else it will let user pick from available subtopics in the questions sheet.
-    """
     st.set_page_config(page_title="Assessment form", layout="wide")
     st.header("📝 Assessment Form")
 
-    # load sheets
-    sh = _open_spreadsheet()
+    # Get subject & subtopic from query params
+    params = st.experimental_get_query_params()
+    subject = params.get("subject", ["maths"])[0].lower()  # default to maths
+    if subtopic_id is None:
+        subtopic_id = params.get("topic", [None])[0]
+
+    # Load spreadsheet for the correct subject
+    sh = _open_spreadsheet(subject)
+
 
     # load main questions sheet
     try:
@@ -354,22 +369,32 @@ def run(subtopic_id=None):
     st.stop()
 
 # Helper to show share link and copy button (teacher convenience)
-def show_teacher_share_link(subtopic_id):
-    # compute your deployed app root. If you don't know, ask the hosting page owner / check Streamlit Cloud URL.
+def show_teacher_share_link(subject, subtopic_id):
+    # Get base URL from secrets (recommended)
     deployed_base = st.secrets.get("app", {}).get("base_url", "")
     if not deployed_base:
-        # fallback: try to derive from current page
-        url = st.experimental_get_query_params().get("url", [""])[0]
-        deployed_base = ""
-    # If you know your base URL, store in secrets: st.secrets["app"]["base_url"] = "https://your-app.streamlit.app"
+        # fallback: use current page base
+        deployed_base = st.experimental_get_query_params().get("url", [""])[0]
+
+    # Construct link with subject + topic params
     if deployed_base:
-        link = f"{deployed_base}/?show_form=1&topic={subtopic_id}"
+        link = f"{deployed_base}/?show_form=1&subject={subject}&topic={subtopic_id}"
     else:
-        # default: use relative link (teacher can copy the current URL and add params)
-        current = st.experimental_get_query_params()
-        link = f"(Add ?show_form=1&topic={subtopic_id} to your app URL)"
+        # Fallback instructions
+        link = f"(Add ?show_form=1&subject={subject}&topic={subtopic_id} to your app URL)"
+
     st.markdown("#### Teacher share link (copy & paste to Google Classroom)")
-    st.text_input("Form link", value=link, key=f"copylink_{subtopic_id}")
+    st.text_input("Form link", value=link, key=f"copylink_{subject}_{subtopic_id}")
+
+    # Optional: Copy button
+    copy_html = f"""
+    <div>
+      <input id="link_{subject}_{subtopic_id}" value="{link}" style="width:80%"/>
+      <button onclick="navigator.clipboard.writeText(document.getElementById('link_{subject}_{subtopic_id}').value)">Copy</button>
+    </div>
+    """
+    st.components.v1.html(copy_html, height=60)
+
     # small raw HTML copy button (works inside the app)
     copy_html = f"""
     <div>
