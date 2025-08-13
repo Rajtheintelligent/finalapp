@@ -19,7 +19,7 @@ if subject == "Mathematics":
 # Spacer to push feedback button to bottom
 st.sidebar.markdown("<br><br><br><br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
 
-# --- Feedback Button (at bottom of sidebar) ---
+# --- Feedback Button ---
 st.sidebar.link_button("📩 Feedback Form", "https://example.com/feedback-form")
 
 # --- Main Page ---
@@ -28,6 +28,7 @@ st.markdown("""
 Use the sidebar to choose the board, subject, and branch. Assessment content will appear below based on your selection.
 """)
 
+# --- Function to Display Subtopics ---
 def show_subtopics(subtopics):
     for topic, links in subtopics.items():
         with st.expander(f"🔹 {topic}"):
@@ -39,6 +40,7 @@ def show_subtopics(subtopics):
             with col3:
                 st.link_button("Open Blooket", links["Blooket"])
 
+# --- Algebra Branch ---
 if subject == "Mathematics" and branch == "Algebra":
     chapter = st.selectbox("Select Chapter", [
         "Linear Equations in Two Variables",
@@ -200,7 +202,8 @@ if subject == "Mathematics" and branch == "Algebra":
         }
 
     show_subtopics(subtopics)
-    
+
+# --- Geometry Branch ---
 elif subject == "Mathematics" and branch == "Geometry":
     chapter = st.selectbox("Select Chapter", [
         "Similarity",
@@ -212,29 +215,12 @@ elif subject == "Mathematics" and branch == "Geometry":
     ])
 
     if chapter == "Similarity":
-    st.subheader("📂 Subtopics in Similarity")
-    subtopics = {
-        "Ratios of areas of two triangles": {
-            "Form": "/form_page?subject=maths&subtopic_id=Ratio_of_Areas_of_two_triangles",
-            "Kahoot": "https://example.com/kahoot-ratios-of-areas-of-two-triangles",  # remove spaces from URL
-            "Blooket": "https://example.com/blooket-ratios-of-areas-of-two-triangles"  # remove spaces from URL
-        }
-    }
-
-    for subtopic, links in subtopics.items():
-        st.write(f"### {subtopic}")
-
-        # Form link
-        st.markdown(f"[Open Form]({links['Form']})", unsafe_allow_html=True)
-
-        # Kahoot link
-        if "Kahoot" in links:
-            st.markdown(f"[Play Kahoot]({links['Kahoot']})", unsafe_allow_html=True)
-
-        # Blooket link
-        if "Blooket" in links:
-            st.markdown(f"[Play Blooket]({links['Blooket']})", unsafe_allow_html=True)
-
+        st.subheader("📂 Subtopics in Similarity")
+        subtopics = {
+            "Ratios of areas of two triangles": {
+                "Form": "/form_page?subject=maths&subtopic_id=Ratio_of_Areas_of_two_triangles",
+                "Kahoot": "https://example.com/kahoot-ratios-of-areas-of-two-triangles",
+                "Blooket": "https://example.com/blooket-ratios-of-areas-of-two-triangles"
             },
             "Criteria for Similarity of Triangles": {
                 "Form": "https://example.com/form-similarity-criteria",
@@ -385,8 +371,6 @@ elif subject == "Mathematics" and branch == "Geometry":
 
     show_subtopics(subtopics)
 
+# --- Placeholder for other subjects ---
 else:
     st.info("Content for the selected subject is coming soon.")
-
-
-
