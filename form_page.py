@@ -277,6 +277,11 @@ def run(subtopic_id=None):
                 for idx, r in remedial_for_wrong.iterrows():
                     rid = r.get("RemedialQuestionID", f"r{idx}")
                     rtext = r.get("QuestionText", "")
+                    
+                     # Show image if available
+                    if r.get("ImageURL"):
+                        st.image(r.get("ImageURL"), width=300)
+                        
                     ropts = [r.get("Option_A",""), r.get("Option_B",""), r.get("Option_C",""), r.get("Option_D","")]
                     shuffled_r = ropts.copy()
                     random.shuffle(shuffled_r)
