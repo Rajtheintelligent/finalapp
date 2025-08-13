@@ -93,15 +93,40 @@ def append_row_to_sheet(sh, worksheet_name, row_list):
 # -------------------------
 # FORM / REMEDIAL LOGIC
 # -------------------------
-def run(subtopic_id=None):
-    st.set_page_config(page_title="Assessment form", layout="wide")
-    st.header("📝 Assessment Form")
+# --- DEBUG BLOCK ---
+import pandas as pd
+import streamlit as st
 
-    # Get subject & subtopic from query params
-    params = st.experimental_get_query_params()
-    subject = params.get("subject", ["maths"])[0].lower()  # default to maths
-    if subtopic_id is None:
-        subtopic_id = params.get("topic", [None])[0]
+st.write("🔍 Debug Info")
+
+# 1. Check what we got from secrets
+spreadsheet_id = st.secrets["google"]["spreadsheet_ids"][subject]
+st.write("Spreadsheet ID from secrets:", spreadsheet_id)
+
+# 2. Build CSV URL and test
+csv_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tqx=out:csv"
+st.write("CSV URL:", csv_url)
+
+try:
+    df = pd.read_csv(csv_url)
+    st.write("✅ CSV loaded successfully! Shape:", df.shape)
+    st.write(df.head())  # Show first rows
+except Exception as e:
+    st.error(f"❌ Failed to load CSV: {e}")
+    st.stop()
+
+# 3. Filter by subtopic_id and test
+if "subtopic_id" in df.columns:
+    filtered_df = df[df["subtopic_id"] == subtopic_id]
+    st.write(f"Rows matching subtopic '{subtopic_id}':", filtered_df.shape[0])
+    st.write(filtered_df.head())
+else:
+    st.error("❌ No 'subtopic_id' column in sheet!")
+    st.stop()
+
+st.write("--- End of debug ---")
+# --- END DEBUG BLOCK ---
+
 
     # Load spreadsheet for the correct subject
     sh = _open_spreadsheet(subject)
