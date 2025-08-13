@@ -212,12 +212,29 @@ elif subject == "Mathematics" and branch == "Geometry":
     ])
 
     if chapter == "Similarity":
-        st.subheader("📂 Subtopics in Similarity")
-        subtopics = {
-            "Ratios of areas of two triangles": {
-                "Form": "/form_page?subject=maths&subtopic_id=Ratio_of_Areas_of_two_triangles",
-                "Kahoot": "https://example.com/kahoot-ratios of areas of two triangles",
-                "Blooket": "https://example.com/blooket-ratios of areas of two triangles"
+    st.subheader("📂 Subtopics in Similarity")
+    subtopics = {
+        "Ratios of areas of two triangles": {
+            "Form": "/form_page?subject=maths&subtopic_id=Ratio_of_Areas_of_two_triangles",
+            "Kahoot": "https://example.com/kahoot-ratios-of-areas-of-two-triangles",  # remove spaces from URL
+            "Blooket": "https://example.com/blooket-ratios-of-areas-of-two-triangles"  # remove spaces from URL
+        }
+    }
+
+    for subtopic, links in subtopics.items():
+        st.write(f"### {subtopic}")
+
+        # Form link
+        st.markdown(f"[Open Form]({links['Form']})", unsafe_allow_html=True)
+
+        # Kahoot link
+        if "Kahoot" in links:
+            st.markdown(f"[Play Kahoot]({links['Kahoot']})", unsafe_allow_html=True)
+
+        # Blooket link
+        if "Blooket" in links:
+            st.markdown(f"[Play Blooket]({links['Blooket']})", unsafe_allow_html=True)
+
             },
             "Criteria for Similarity of Triangles": {
                 "Form": "https://example.com/form-similarity-criteria",
@@ -370,5 +387,6 @@ elif subject == "Mathematics" and branch == "Geometry":
 
 else:
     st.info("Content for the selected subject is coming soon.")
+
 
 
