@@ -208,7 +208,13 @@ if subject == "Mathematics" and branch == "Algebra":
 
 # ---------------- Geometry Branch ----------------
 # ---------------- Geometry Branch ----------------
-elif subject == "Mathematics" and branch == "Geometry":
+import streamlit as st
+
+def render_form(subject, subtopic):
+    form_url = f"/form_page?subject={subject}&subtopic={subtopic}"
+    st.markdown(f"[Click here to open the form]({form_url})", unsafe_allow_html=True)
+
+if subject == "Mathematics" and branch == "Geometry":
     chapter = st.selectbox("Select Chapter", [
         "Similarity",
         "Pythagoras Theorem",
@@ -386,6 +392,7 @@ elif subject == "Mathematics" and branch == "Geometry":
 # ---------------- Other Subjects ----------------
 elif subject != "Mathematics":
     st.info("Content for the selected subject is coming soon.")
+
 
 
 
