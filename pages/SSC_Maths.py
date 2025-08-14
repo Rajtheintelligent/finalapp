@@ -17,10 +17,13 @@ if subject == "Mathematics":
     branch = st.sidebar.selectbox("Select Branch", ["Algebra", "Geometry"])
 
 # Spacer to push feedback button to bottom
-st.sidebar.markdown("<br><br><br><br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
+st.sidebar.markdown("<br>" * 12, unsafe_allow_html=True)
 
 # --- Feedback Button ---
-st.sidebar.link_button("📩 Feedback Form", "https://example.com/feedback-form")
+st.sidebar.markdown(
+    "[📩 Feedback Form](https://example.com/feedback-form)",
+    unsafe_allow_html=True
+)
 
 # --- Main Page ---
 st.title("📘 SSC Mathematics")
@@ -34,13 +37,13 @@ def show_subtopics(subtopics):
         with st.expander(f"🔹 {topic}"):
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.link_button("Open Form", links["Form"])
+                st.markdown(f"[Open Form]({links['Form']})", unsafe_allow_html=True)
             with col2:
-                st.link_button("Open Kahoot", links["Kahoot"])
+                st.markdown(f"[Open Kahoot]({links['Kahoot']})", unsafe_allow_html=True)
             with col3:
-                st.link_button("Open Blooket", links["Blooket"])
+                st.markdown(f"[Open Blooket]({links['Blooket']})", unsafe_allow_html=True)
 
-# --- Algebra Branch ---
+# ---------------- Algebra Branch ----------------
 if subject == "Mathematics" and branch == "Algebra":
     chapter = st.selectbox("Select Chapter", [
         "Linear Equations in Two Variables",
@@ -55,7 +58,7 @@ if subject == "Mathematics" and branch == "Algebra":
         st.subheader("📂 Subtopics in Linear Equations in Two Variables")
         subtopics = {
             "Graphical Representation": {
-                "Form": "/form_page?subject=maths&subtopic_id=Ratio_of_Areas_of_two_triangles",
+                "Form": "https://example.com/form-linear-graph",
                 "Kahoot": "https://example.com/kahoot-linear-graph",
                 "Blooket": "https://example.com/blooket-linear-graph"
             },
@@ -203,7 +206,7 @@ if subject == "Mathematics" and branch == "Algebra":
 
     show_subtopics(subtopics)
 
-# --- Geometry Branch ---
+# ---------------- Geometry Branch ----------------
 elif subject == "Mathematics" and branch == "Geometry":
     chapter = st.selectbox("Select Chapter", [
         "Similarity",
@@ -214,41 +217,40 @@ elif subject == "Mathematics" and branch == "Geometry":
         "Mensuration (Surface Area and Volume)"
     ])
 
-if chapter == "Similarity":
-    st.subheader("📂 Subtopics in Similarity")
-    subtopics = {
-        "Ratios of areas of two triangles": {
-            "Form": "form_page?subject=SSC_Maths&subtopic=ratios_of_areas_of_two_triangles",
-            "Kahoot": "https://example.com/kahoot-ratios-of-areas-of-two-triangles",
-            "Blooket": "https://example.com/blooket-ratios-of-areas-of-two-triangles"
-        },
-        "Criteria for Similarity of Triangles": {
-            "Form": "https://example.com/form-similarity-criteria",
-            "Kahoot": "https://example.com/kahoot-similarity-criteria",
-            "Blooket": "https://example.com/blooket-similarity-criteria"
-        },
-        "Basic Proportionality Theorem (BPT)": {
-            "Form": "https://example.com/form-bpt",
-            "Kahoot": "https://example.com/kahoot-bpt",
-            "Blooket": "https://example.com/blooket-bpt"
-        },
-        "Converse of BPT": {
-            "Form": "https://example.com/form-bpt-converse",
-            "Kahoot": "https://example.com/kahoot-bpt-converse",
-            "Blooket": "https://example.com/blooket-bpt-converse"
-        },
-        "Areas of Similar Triangles": {
-            "Form": "https://example.com/form-similarity-area",
-            "Kahoot": "https://example.com/kahoot-similarity-area",
-            "Blooket": "https://example.com/blooket-similarity-area"
-        },
-        "Pythagoras Theorem via Similarity": {
-            "Form": "https://example.com/form-similarity-pythagoras",
-            "Kahoot": "https://example.com/kahoot-similarity-pythagoras",
-            "Blooket": "https://example.com/blooket-similarity-pythagoras"
+    if chapter == "Similarity":
+        st.subheader("📂 Subtopics in Similarity")
+        subtopics = {
+            "Ratios of areas of two triangles": {
+                "Form": "https://example.com/form-ratios-areas",
+                "Kahoot": "https://example.com/kahoot-ratios-areas",
+                "Blooket": "https://example.com/blooket-ratios-areas"
+            },
+            "Criteria for Similarity of Triangles": {
+                "Form": "https://example.com/form-similarity-criteria",
+                "Kahoot": "https://example.com/kahoot-similarity-criteria",
+                "Blooket": "https://example.com/blooket-similarity-criteria"
+            },
+            "Basic Proportionality Theorem (BPT)": {
+                "Form": "https://example.com/form-bpt",
+                "Kahoot": "https://example.com/kahoot-bpt",
+                "Blooket": "https://example.com/blooket-bpt"
+            },
+            "Converse of BPT": {
+                "Form": "https://example.com/form-bpt-converse",
+                "Kahoot": "https://example.com/kahoot-bpt-converse",
+                "Blooket": "https://example.com/blooket-bpt-converse"
+            },
+            "Areas of Similar Triangles": {
+                "Form": "https://example.com/form-similarity-area",
+                "Kahoot": "https://example.com/kahoot-similarity-area",
+                "Blooket": "https://example.com/blooket-similarity-area"
+            },
+            "Pythagoras Theorem via Similarity": {
+                "Form": "https://example.com/form-similarity-pythagoras",
+                "Kahoot": "https://example.com/kahoot-similarity-pythagoras",
+                "Blooket": "https://example.com/blooket-similarity-pythagoras"
+            }
         }
-    }
-
 
     elif chapter == "Pythagoras Theorem":
         st.subheader("📂 Subtopics in Pythagoras Theorem")
@@ -372,11 +374,6 @@ if chapter == "Similarity":
 
     show_subtopics(subtopics)
 
-# --- Placeholder for other subjects ---
-else:
+# ---------------- Other Subjects ----------------
+elif subject != "Mathematics":
     st.info("Content for the selected subject is coming soon.")
-
-
-
-
-
