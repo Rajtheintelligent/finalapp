@@ -24,7 +24,7 @@ sheet = client.open_by_url(spreadsheet_url)
 
 # --- Load main & remedial questions ---
 main_df = pd.DataFrame(sheet.worksheet("Main").get_all_records())
-remedial_df = pd.DataFrame(sheet.worksheet("Remedial").get_all_records())
+remedial_questions = remedial_df[remedial_df['MainQuestionID'].isin(main_ids_for_subtopic)]
 
 main_questions = main_df[main_df['SubtopicID'] == subtopic_id]
 remedial_questions = remedial_df[remedial_df['SubtopicID'] == subtopic_id]
