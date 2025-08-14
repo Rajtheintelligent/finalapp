@@ -214,14 +214,16 @@ elif subject == "Mathematics" and branch == "Geometry":
         "Mensuration (Surface Area and Volume)"
     ])
 
-    if chapter == "Similarity":
-        st.subheader("📂 Subtopics in Similarity")
-        subtopics = {
-            "Ratios of areas of two triangles": {
-                "Form": "form_page",
-                "Kahoot": "https://example.com/kahoot-ratios-of-areas-of-two-triangles",
-                "Blooket": "https://example.com/blooket-ratios-of-areas-of-two-triangles"
-            },
+if chapter == "Similarity":
+    st.subheader("📂 Subtopics in Similarity")
+    subtopics = {
+        "Ratios of areas of two triangles": {
+            "Form": "form_page",
+            "Kahoot": "https://example.com/kahoot-ratios-of-areas-of-two-triangles",
+            "Blooket": "https://example.com/blooket-ratios-of-areas-of-two-triangles"
+        }
+    },
+
             "Criteria for Similarity of Triangles": {
                 "Form": "https://example.com/form-similarity-criteria",
                 "Kahoot": "https://example.com/kahoot-similarity-criteria",
@@ -374,6 +376,7 @@ elif subject == "Mathematics" and branch == "Geometry":
 # --- Placeholder for other subjects ---
 else:
     st.info("Content for the selected subject is coming soon.")
+
 
 
 
