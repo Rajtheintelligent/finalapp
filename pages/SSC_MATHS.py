@@ -21,12 +21,12 @@ chapter = st.selectbox("Select Chapter", [
     "Similarity"
 ])
 
-if chapter == "Linear Equations":
+if chapter == "Similarity":
     subtopics = {
-        "Solving Linear Equations": {
-            "Form": "Solving_Linear_Equations",  # Must match SubtopicID in Google Sheet
-            "Kahoot": "https://kahoot.com/example-le",
-            "Blooket": "https://blooket.com/example-le"
+        "Ratios of Areas of Two Triangles": {
+            "Form": "Ratio_of_Areas_of_two_triangles",
+            "Kahoot": "https://kahoot.com/example-sim1",
+            "Blooket": "https://blooket.com/example-sim1"
         },
         "Word Problems on Linear Equations": {
             "Form": "Word_Problems_Linear_Equations",
