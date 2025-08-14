@@ -221,7 +221,7 @@ elif subject == "Mathematics" and branch == "Geometry":
         st.subheader("📂 Subtopics in Similarity")
         subtopics = {
             "Ratios of areas of two triangles": {
-                "Form": "form_page?subject=SSC_Maths&subtopic=ratio_of_areas_of_two_triangles",
+                "Form": f"/form_page?subject=SSC_Maths&subtopic=ratio_of_areas_of_two_triangles"
                 "Kahoot": "https://example.com/kahoot-ratios-areas",
                 "Blooket": "https://example.com/blooket-ratios-areas"
             },
@@ -377,4 +377,5 @@ elif subject == "Mathematics" and branch == "Geometry":
 # ---------------- Other Subjects ----------------
 elif subject != "Mathematics":
     st.info("Content for the selected subject is coming soon.")
+
 
