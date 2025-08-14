@@ -55,7 +55,7 @@ if subject == "Mathematics" and branch == "Algebra":
         st.subheader("📂 Subtopics in Linear Equations in Two Variables")
         subtopics = {
             "Graphical Representation": {
-                "Form": "https://example.com/form-linear-graph",
+                "Form": "/form_page?subject=maths&subtopic_id=Ratio_of_Areas_of_two_triangles",
                 "Kahoot": "https://example.com/kahoot-linear-graph",
                 "Blooket": "https://example.com/blooket-linear-graph"
             },
@@ -218,7 +218,7 @@ elif subject == "Mathematics" and branch == "Geometry":
         st.subheader("📂 Subtopics in Similarity")
         subtopics = {
             "Ratios of areas of two triangles": {
-                "Form": "/form_page?subject=maths&subtopic_id=Ratio",
+                "Form": "/form_page?subject=maths&subtopic_id=Ratio_of_Areas_of_two_triangles",
                 "Kahoot": "https://example.com/kahoot-ratios-of-areas-of-two-triangles",
                 "Blooket": "https://example.com/blooket-ratios-of-areas-of-two-triangles"
             },
@@ -374,4 +374,5 @@ elif subject == "Mathematics" and branch == "Geometry":
 # --- Placeholder for other subjects ---
 else:
     st.info("Content for the selected subject is coming soon.")
+
 
