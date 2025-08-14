@@ -1,128 +1,126 @@
+# form_page.py
+
 import streamlit as st
 import pandas as pd
 import random
-from streamlit_gsheets import GSheetsConnection
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
 # --- PAGE CONFIG ---
-st.set_page_config(layout="wide")
+st.set_page_config(page_title="Quiz Form", layout="wide")
 
-# --- DATA LOADING FUNCTION ---
-# This function connects to Google Sheets and fetches data.
-# It's cached to avoid re-downloading data on every interaction.
-@st.cache_data(ttl=60) # Cache data for 60 seconds
-def load_data(spreadsheet_id, worksheet_name):
-    """Loads data from a specific worksheet in a Google Sheet."""
-    try:
-        conn = st.connection("gsheets", type=GSheetsConnection)
-        df = conn.read(spreadsheet=spreadsheet_id, worksheet=worksheet_name)
-        # Filter out empty rows that GSheets sometimes returns
-        return df.dropna(how="all")
-    except Exception as e:
-        st.error(f"Failed to load data from worksheet '{worksheet_name}': {e}")
+# --- GOOGLE SHEETS CONNECTION ---
+def get_gsheet_data(spreadsheet_id, range_name):
+    creds = service_account.Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"],
+    )
+    service = build("sheets", "v4", credentials=creds)
+    sheet = service.spreadsheets()
+    result = sheet.values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
+    values = result.get("values", [])
+
+    if not values:
         return pd.DataFrame()
+    
+    df = pd.DataFrame(values[1:], columns=values[0])
+    return df
 
-# --- MAIN LOGIC ---
-
-# 1. GET DETAILS FROM URL
-# Get the subject and subtopic ID from the URL query parameters
-subject = st.query_params.get("subject")
-subtopic_id = st.query_params.get("subtopic_id")
+# --- GET QUERY PARAMS ---
+query_params = st.experimental_get_query_params()
+subject = query_params.get("subject", [""])[0]
+subtopic_id = query_params.get("subtopic_id", [""])[0]
 
 if not subject or not subtopic_id:
-    st.error("⚠️ Page loaded incorrectly. Please navigate from the subject page.")
-    st.page_link("pages/ICSE_Maths.py", label="Go Back to Subject Selection", icon="👈")
-else:
-    # 2. LOAD DATA FROM GOOGLE SHEETS
-    # Get the correct spreadsheet ID from your secrets
-    spreadsheet_id = st.secrets.google.spreadsheet_ids.get(subject)
-    if not spreadsheet_id:
-        st.error(f"Spreadsheet ID for subject '{subject}' not found in secrets.")
-    else:
-        # Load main and remedial questions
-        main_df = load_data(spreadsheet_id, "main_form")
-        remedial_df = load_data(spreadsheet_id, "remedial_form")
-        
-        # Filter for the specific subtopic
-        questions_to_display = main_df[main_df['SubtopicID'] == subtopic_id]
+    st.error("Missing subject or subtopic_id in URL")
+    st.stop()
 
-        if questions_to_display.empty:
-            st.warning(f"No questions found for Subtopic ID: `{subtopic_id}`")
+# --- LOAD QUESTIONS ---
+spreadsheet_id = st.secrets["google"]["spreadsheet_ids"][subject]
+main_df = get_gsheet_data(spreadsheet_id, "MainQuestions")
+remedial_df = get_gsheet_data(spreadsheet_id, "RemedialQuestions")
+
+main_questions_to_display = main_df[main_df['SubtopicID'] == subtopic_id]
+
+if main_questions_to_display.empty:
+    st.warning("No questions available for this subtopic.")
+    st.stop()
+
+st.title(f"📘 {subtopic_id} Quiz")
+
+# --- MAIN QUIZ ---
+with st.form("main_quiz_form"):
+    st.subheader("Main Quiz")
+    user_answers = {}
+    for index, q in main_questions_to_display.iterrows():
+        st.markdown("---")
+        st.markdown(f"**Q{index + 1}: {q['QuestionText']}**")
+
+        if 'ImageURL' in q and pd.notna(q['ImageURL']):
+            st.image(q['ImageURL'])
+
+        options = [q[col] for col in ['Option_A', 'Option_B', 'Option_C', 'Option_D'] if col in q and pd.notna(q[col])]
+        random.shuffle(options)
+
+        user_answers[q['QuestionID']] = st.radio(
+            "Select an answer:",
+            options,
+            key=f"main_{q['QuestionID']}"
+        )
+
+    submitted = st.form_submit_button("Submit Main Quiz")
+
+if submitted:
+    score = 0
+    incorrect_question_ids = []
+    for q_id, user_answer in user_answers.items():
+        row = main_questions_to_display[main_questions_to_display['QuestionID'] == q_id]
+        if not row.empty and user_answer == row['CorrectOption'].iloc[0]:
+            score += 1
         else:
-            st.title(f"📝 Quiz: {subtopic_id.replace('_', ' ')}")
-            st.write("Answer the following questions. Your options will be shuffled.")
-            
-            # 3. CREATE THE MAIN FORM
-            with st.form("main_quiz_form"):
-                user_answers = {}
-                # Loop through each question for the selected subtopic
-                for index, q in questions_to_display.iterrows():
+            incorrect_question_ids.append(q_id)
+
+    st.success(f"✅ You scored {score} out of {len(user_answers)} in the main quiz.")
+
+    # --- REMEDIAL QUIZ ---
+    if incorrect_question_ids:
+        st.warning("You missed some questions. Let's try a few remedial ones.")
+        remedial_questions_to_display = remedial_df[remedial_df['MainQuestionID'].isin(incorrect_question_ids)]
+
+        if not remedial_questions_to_display.empty:
+            with st.form("remedial_quiz_form"):
+                st.subheader("Remedial Quiz")
+                remedial_user_answers = {}
+                for index, r_q in remedial_questions_to_display.iterrows():
                     st.markdown("---")
-                    st.subheader(q['QuestionText'])
-                    
-                    if pd.notna(q.get('ImageURL')):
-                        st.image(q['ImageURL'])
+                    st.markdown(f"**{r_q['QuestionText']}**")
 
-                    # Get options, filter out empty ones, and shuffle them
-                    options = [q[col] for col in ['Option_A', 'Option_B', 'Option_C', 'Option_D'] if pd.notna(q[col])]
-                    random.shuffle(options)
-                    
-                    # Create the radio button with shuffled options
-                    user_answers[q['QuestionID']] = st.radio(
-                        "Select an answer:", 
-                        options, 
-                        key=f"main_{q['QuestionID']}"
+                    if 'ImageURL' in r_q and pd.notna(r_q['ImageURL']):
+                        st.image(r_q['ImageURL'])
+
+                    r_options = [r_q[col] for col in ['Option_A', 'Option_B', 'Option_C', 'Option_D'] if col in r_q and pd.notna(r_q[col])]
+                    random.shuffle(r_options)
+
+                    remedial_user_answers[r_q['RemedialQuestionID']] = st.radio(
+                        "Select an answer:",
+                        r_options,
+                        key=f"remedial_{r_q['RemedialQuestionID']}"
                     )
-                
-                submitted = st.form_submit_button("Submit My Answers")
 
-            # 4. PROCESS SUBMISSION
-            if submitted:
-                score = 0
-                incorrect_question_ids = []
-                
-                # Grade the answers
-                for q_id, user_answer in user_answers.items():
-                    correct_answer = questions_to_display[questions_to_display['QuestionID'] == q_id]['CorrectOption'].iloc[0]
-                    if user_answer == correct_answer:
-                        score += questions_to_display[questions_to_display['QuestionID'] == q_id]['Marks'].iloc[0]
-                    else:
-                        incorrect_question_ids.append(q_id)
-                
-                total_marks = questions_to_display['Marks'].sum()
-                st.success(f"**Your Score: {score} / {total_marks}**")
-                
-                # --- SEND NOTIFICATIONS (Example) ---
-                # This is where you would add your Telegram bot logic
-                # st.toast(f"Parent notification sent for score: {score}")
-                # if incorrect_question_ids:
-                #    st.toast("Teacher notification sent for incorrect answers.")
+                remedial_submitted = st.form_submit_button("Submit Remedial Answers")
 
-                # 5. GENERATE REMEDIAL FORM (if needed)
-                if incorrect_question_ids:
-                    st.warning("You had some trouble with the questions below. Let's try a few more to help you understand.")
-                    
-                    remedial_questions_to_display = remedial_df[remedial_df['MainQuestionID'].isin(incorrect_question_ids)]
-                    
-                    if not remedial_questions_to_display.empty:
-                        with st.form("remedial_quiz_form"):
-                            # Create the remedial form
-                            for index, r_q in remedial_questions_to_display.iterrows():
-                                st.markdown("---")
-                                st.subheader(r_q['QuestionText'])
-                                if pd.notna(r_q.get('ImageURL')):
-                                    st.image(r_q['ImageURL'])
-                                
-                                r_options = [r_q[col] for col in ['Option_A', 'Option_B', 'Option_C', 'Option_D'] if pd.notna(r_q[col])]
-                                random.shuffle(r_options)
-                                
-                                st.radio("Select an answer:", r_options, key=f"remedial_{r_q['RemedialQuestionID']}")
-                            
-                            remedial_submitted = st.form_submit_button("Submit Remedial Answers")
-                            if remedial_submitted:
-                                st.balloons()
-                                st.info("Thank you for completing the remedial exercise!")
-                    else:
-                        st.info("No remedial questions available for the ones you missed.")
-                else:
+            if remedial_submitted:
+                remedial_score = 0
+                for r_q_id, r_user_answer in remedial_user_answers.items():
+                    r_row = remedial_questions_to_display[remedial_questions_to_display['RemedialQuestionID'] == r_q_id]
+                    if not r_row.empty and r_user_answer == r_row['CorrectOption'].iloc[0]:
+                        remedial_score += 1
+
+                st.success(f"🎯 You got {remedial_score} out of {len(remedial_user_answers)} remedial questions correct!")
+                if remedial_score == len(remedial_user_answers):
                     st.balloons()
-                    st.success("Great job! You got everything correct!")
+        else:
+            st.info("No remedial questions available for your incorrect answers.")
+    else:
+        st.balloons()
+        st.success("🎉 Excellent! You got all questions correct.")
