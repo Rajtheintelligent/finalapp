@@ -207,6 +207,7 @@ if subject == "Mathematics" and branch == "Algebra":
     show_subtopics(subtopics)
 
 # ---------------- Geometry Branch ----------------
+# ---------------- Geometry Branch ----------------
 elif subject == "Mathematics" and branch == "Geometry":
     chapter = st.selectbox("Select Chapter", [
         "Similarity",
@@ -219,59 +220,67 @@ elif subject == "Mathematics" and branch == "Geometry":
 
     if chapter == "Similarity":
         st.subheader("📂 Subtopics in Similarity")
-        subtopics = {
-            "Ratios of areas of two triangles": {
-                "Form": f"/form_page?subject=SSC_Maths&subtopic=ratio_of_areas_of_two_triangles",
-                "Kahoot": "https://example.com/kahoot-ratios-areas",
-                "Blooket": "https://example.com/blooket-ratios-areas"
-             },
-            "Criteria for Similarity of Triangles": {
-                "Form": "https://example.com/form-similarity-criteria",
-                "Kahoot": "https://example.com/kahoot-similarity-criteria",
-                "Blooket": "https://example.com/blooket-similarity-criteria"
-            },
-            "Basic Proportionality Theorem (BPT)": {
-                "Form": "https://example.com/form-bpt",
-                "Kahoot": "https://example.com/kahoot-bpt",
-                "Blooket": "https://example.com/blooket-bpt"
-            },
-            "Converse of BPT": {
-                "Form": "https://example.com/form-bpt-converse",
-                "Kahoot": "https://example.com/kahoot-bpt-converse",
-                "Blooket": "https://example.com/blooket-bpt-converse"
-            },
-            "Areas of Similar Triangles": {
-                "Form": "https://example.com/form-similarity-area",
-                "Kahoot": "https://example.com/kahoot-similarity-area",
-                "Blooket": "https://example.com/blooket-similarity-area"
-            },
-            "Pythagoras Theorem via Similarity": {
-                "Form": "https://example.com/form-similarity-pythagoras",
-                "Kahoot": "https://example.com/kahoot-similarity-pythagoras",
-                "Blooket": "https://example.com/blooket-similarity-pythagoras"
-            }
-        }
+
+        st.markdown("### Ratios of areas of two triangles")
+        if st.button("Open Form - Ratios of areas of two triangles", key="btn_sim_ratios"):
+            render_form(subject="SSC_Maths", subtopic="ratio_of_areas_of_two_triangles")
+        st.markdown("[Kahoot](https://example.com/kahoot-ratios-areas)")
+        st.markdown("[Blooket](https://example.com/blooket-ratios-areas)")
+
+        st.markdown("### Criteria for Similarity of Triangles")
+        if st.button("Open Form - Criteria for Similarity of Triangles", key="btn_sim_criteria"):
+            render_form(subject="SSC_Maths", subtopic="criteria_for_similarity_of_triangles")
+        st.markdown("[Kahoot](https://example.com/kahoot-similarity-criteria)")
+        st.markdown("[Blooket](https://example.com/blooket-similarity-criteria)")
+
+        st.markdown("### Basic Proportionality Theorem (BPT)")
+        if st.button("Open Form - Basic Proportionality Theorem (BPT)", key="btn_sim_bpt"):
+            render_form(subject="SSC_Maths", subtopic="bpt")
+        st.markdown("[Kahoot](https://example.com/kahoot-bpt)")
+        st.markdown("[Blooket](https://example.com/blooket-bpt)")
+
+        st.markdown("### Converse of BPT")
+        if st.button("Open Form - Converse of BPT", key="btn_sim_bpt_conv"):
+            render_form(subject="SSC_Maths", subtopic="bpt_converse")
+        st.markdown("[Kahoot](https://example.com/kahoot-bpt-converse)")
+        st.markdown("[Blooket](https://example.com/blooket-bpt-converse)")
+
+        st.markdown("### Areas of Similar Triangles")
+        if st.button("Open Form - Areas of Similar Triangles", key="btn_sim_area"):
+            render_form(subject="SSC_Maths", subtopic="similarity_area")
+        st.markdown("[Kahoot](https://example.com/kahoot-similarity-area)")
+        st.markdown("[Blooket](https://example.com/blooket-similarity-area)")
+
+        st.markdown("### Pythagoras Theorem via Similarity")
+        if st.button("Open Form - Pythagoras Theorem via Similarity", key="btn_sim_pyth"):
+            render_form(subject="SSC_Maths", subtopic="similarity_pythagoras")
+        st.markdown("[Kahoot](https://example.com/kahoot-similarity-pythagoras)")
+        st.markdown("[Blooket](https://example.com/blooket-similarity-pythagoras)")
 
     elif chapter == "Pythagoras Theorem":
         st.subheader("📂 Subtopics in Pythagoras Theorem")
-        subtopics = {
-            "Statement and Proof": {
-                "Form": "https://example.com/form-pythagoras-proof",
-                "Kahoot": "https://example.com/kahoot-pythagoras-proof",
-                "Blooket": "https://example.com/blooket-pythagoras-proof"
-            },
-            "Converse": {
-                "Form": "https://example.com/form-pythagoras-converse",
-                "Kahoot": "https://example.com/kahoot-pythagoras-converse",
-                "Blooket": "https://example.com/blooket-pythagoras-converse"
-            },
-            "Applications in Numerical Problems": {
-                "Form": "https://example.com/form-pythagoras-apps",
-                "Kahoot": "https://example.com/kahoot-pythagoras-apps",
-                "Blooket": "https://example.com/blooket-pythagoras-apps"
-            }
-        }
 
+        st.markdown("### Statement and Proof")
+        if st.button("Open Form - Statement and Proof", key="btn_pyth_proof"):
+            render_form(subject="SSC_Maths", subtopic="pythagoras_proof")
+        st.markdown("[Kahoot](https://example.com/kahoot-pythagoras-proof)")
+        st.markdown("[Blooket](https://example.com/blooket-pythagoras-proof)")
+
+        st.markdown("### Converse")
+        if st.button("Open Form - Converse", key="btn_pyth_conv"):
+            render_form(subject="SSC_Maths", subtopic="pythagoras_converse")
+        st.markdown("[Kahoot](https://example.com/kahoot-pythagoras-converse)")
+        st.markdown("[Blooket](https://example.com/blooket-pythagoras-converse)")
+
+        st.markdown("### Applications in Numerical Problems")
+        if st.button("Open Form - Applications in Numerical Problems", key="btn_pyth_apps"):
+            render_form(subject="SSC_Maths", subtopic="pythagoras_apps")
+        st.markdown("[Kahoot](https://example.com/kahoot-pythagoras-apps)")
+        st.markdown("[Blooket](https://example.com/blooket-pythagoras-apps)")
+
+    # ⬇️ Your next chapter continues here
+    elif chapter == "Circles":
+        st.subheader("📂 Subtopics in Circles")
     elif chapter == "Circles":
         st.subheader("📂 Subtopics in Circles")
         subtopics = {
@@ -377,6 +386,7 @@ elif subject == "Mathematics" and branch == "Geometry":
 # ---------------- Other Subjects ----------------
 elif subject != "Mathematics":
     st.info("Content for the selected subject is coming soon.")
+
 
 
 
