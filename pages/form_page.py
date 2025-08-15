@@ -51,16 +51,16 @@ user_answers = {}
 
 with st.form("main_quiz"):
     for _, q in main_questions.iterrows():
-    # Show image if available
-    if pd.notna(q.get("ImageURL")) and q["ImageURL"].strip():
-        st.image(q["ImageURL"], use_column_width=True)
+        # Show image if available
+        if pd.notna(q.get("ImageURL")) and q["ImageURL"].strip():
+            st.image(q["ImageURL"], use_column_width=True)
 
-    options = [q["Option_A"], q["Option_B"], q["Option_C"], q["Option_D"]]
-    user_answers[q["QuestionID"]] = st.radio(
-        f"{q['QuestionText']}",
-        options,
-        key=f"main_{q['QuestionID']}"
-    )
+        options = [q["Option_A"], q["Option_B"], q["Option_C"], q["Option_D"]]
+        user_answers[q["QuestionID"]] = st.radio(
+            f"{q['QuestionText']}",
+            options,
+            key=f"main_{q['QuestionID']}"
+        )
     submitted = st.form_submit_button("Submit Answers")
 
 if submitted:
