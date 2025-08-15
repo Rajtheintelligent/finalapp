@@ -30,10 +30,19 @@ st.set_page_config(page_title="Form", layout="centered")
 ANTI_CHEAT_JS = """
 <script>
 document.addEventListener('contextmenu', event => event.preventDefault());
+
+// Disable text selection
+document.addEventListener('selectstart', event => event.preventDefault());
+document.addEventListener('copy', event => event.preventDefault());
+
+// Block key combos
 document.addEventListener('keydown', function(e) {
   const k = e.key.toLowerCase();
-  if ((e.ctrlKey || e.metaKey) && ['c','x','p','s','u','a'].includes(k)) { e.preventDefault(); }
+  if ((e.ctrlKey || e.metaKey) && ['c','x','p','s','u','a'].includes(k)) {
+    e.preventDefault();
+  }
 });
+
 let warnCount = 0;
 function warnUser() {
   warnCount++;
@@ -44,9 +53,18 @@ function warnUser() {
     if (btn) btn.click();
   }
 }
+
 document.addEventListener("visibilitychange", function() { if (document.hidden) warnUser(); });
 window.addEventListener("blur", warnUser, { passive: true });
 </script>
+<style>
+/* Prevent text selection */
+* {
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+</style>
 """
 st.markdown(ANTI_CHEAT_JS, unsafe_allow_html=True)
 
