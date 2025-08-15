@@ -1,7 +1,49 @@
-st.header("Main Quiz")
+import streamlit as st
+import pandas as pd
+import gspread
+from google.oauth2.service_account import Credentials
 
-user_answers = {}
+# --- Page config ---
+st.set_page_config(page_title="Form Page", layout="wide")
 
+# --- Get URL query parameters ---
+params = st.query_params
+subject = params.get("subject", "")
+subtopic_id = params.get("subtopic_id", "")
+
+if not subject or not subtopic_id:
+    st.error("❌ Missing subject or subtopic_id in URL.")
+    st.stop()
+
+# --- Connect to Google Sheets ---
+scope = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive"
+]
+creds = Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"], scopes=scope
+)
+client = gspread.authorize(creds)
+
+spreadsheet_url = st.secrets["google"]["spreadsheet_ids"][subject.lower()]
+sheet = client.open_by_url(spreadsheet_url)
+
+# --- Load data from both sheets ---
+try:
+    main_df = pd.DataFrame(sheet.worksheet("Main").get_all_records())
+    remedial_df = pd.DataFrame(sheet.worksheet("Remedial").get_all_records())
+except gspread.exceptions.WorksheetNotFound as e:
+    st.error(f"❌ Worksheet not found: {e}")
+    st.stop()
+
+# --- Filter main questions for this subtopic ---
+main_questions = main_df[main_df["SubtopicID"] == subtopic_id]
+
+if main_questions.empty:
+    st.warning("⚠ No questions found for this subtopic.")
+    st.stop()
+
+st.title(f"📄 {subject} - {subtopic_id.replace('_',' ')}")
 # --- MAIN QUIZ FORM ---
 with st.form("main_quiz"):
     for _, q in main_questions.iterrows():
