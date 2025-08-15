@@ -3,6 +3,19 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 
+# --- Helper: Normalize Image URLs ---
+def normalize_img_url(value):
+    value = str(value or "").strip()
+    if not value:
+        return ""
+    # Already a full Drive direct link
+    if value.startswith("https://drive.google.com/uc?export=view&id="):
+        return value
+    # Just a file ID (no slashes, long enough to be a Drive ID)
+    if len(value) > 20 and "/" not in value:
+        return f"https://drive.google.com/uc?export=view&id={value}"
+    return value
+
 # --- Page config ---
 st.set_page_config(page_title="Form Page", layout="wide")
 
@@ -44,16 +57,16 @@ if main_questions.empty:
     st.stop()
 
 st.title(f"📄 {subject} - {subtopic_id.replace('_',' ')}")
+
 # --- MAIN QUIZ FORM ---
-# --- MAIN QUIZ FORM ---
-user_answers = {}  # <-- Add this line before the loop
+user_answers = {}
 
 with st.form("main_quiz"):
     for _, q in main_questions.iterrows():
         
         # --- Image handling ---
-        img_url = str(q.get("ImageURL", "") or "").strip()
-        if img_url and img_url != "https://drive.google.com/uc?export=view&id=":
+        img_url = normalize_img_url(q.get("ImageURL", ""))
+        if img_url:
             st.image(img_url, use_container_width=True)
 
         # --- Options ---
@@ -92,8 +105,10 @@ if submit_main:
         with st.form("remedial_quiz"):
             remedial_answers = {}
             for q in wrong_questions:
-                img_url = str(q.get("ImageURL", "") or "").strip()
-                if img_url and img_url != "https://drive.google.com/uc?export=view&id=":
+                
+                # --- Image handling ---
+                img_url = normalize_img_url(q.get("ImageURL", ""))
+                if img_url:
                     st.image(img_url, use_container_width=True)
 
                 options = [
