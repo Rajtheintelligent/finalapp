@@ -24,7 +24,7 @@ chapter = st.selectbox("Select Chapter", [
 if chapter == "Similarity":
     subtopics = {
         "Ratios of Areas of Two Triangles": {
-            "Form": "Ratio_of_Areas_of_two_triangles",
+            "Form": "similarity11",
             "Kahoot": "https://kahoot.com/example-sim1",
             "Blooket": "https://blooket.com/example-sim1"
         },
@@ -39,7 +39,7 @@ if chapter == "Similarity":
 elif chapter == "Similarity":
     subtopics = {
         "Ratios of Areas of Two Triangles": {
-            "Form": "Ratio_of_Areas_of_Two_Triangles",
+            "Form": "similarity11",
             "Kahoot": "https://kahoot.com/example-sim1",
             "Blooket": "https://blooket.com/example-sim1"
         }
