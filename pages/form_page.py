@@ -45,6 +45,9 @@ if main_questions.empty:
 
 st.title(f"📄 {subject} - {subtopic_id.replace('_',' ')}")
 # --- MAIN QUIZ FORM ---
+# --- MAIN QUIZ FORM ---
+user_answers = {}  # <-- Add this line before the loop
+
 with st.form("main_quiz"):
     for _, q in main_questions.iterrows():
         
