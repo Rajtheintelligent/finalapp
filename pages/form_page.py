@@ -153,6 +153,20 @@ subtopic_id  = param("subtopic_id", "").strip()   # e.g., "similarity11"
 # "bank" chooses which big question/response sheet to use (e.g., "ssc_maths_algebra")
 # If omitted, fallback to subject key.
 bank         = param("bank", subject.lower()).strip()
+# Map subject/chapter names to your secrets keys
+bank_map = {
+    "mathematics": "ssc_maths_geometry",  # or ssc_maths_algebra depending on your page
+    "maths": "ssc_maths_geometry",
+    "ssc_maths_algebra": "ssc_maths_algebra",
+    "ssc_maths_geometry": "ssc_maths_geometry",
+    "science": "science_1",  # example mapping
+    "science1": "science_1",
+    "science2": "science_2",
+}
+
+if bank in bank_map:
+    bank = bank_map[bank]
+
 # Optional chapter field for logging (falls back to subject if not provided)
 chapter      = param("chapter", subject).strip()
 
