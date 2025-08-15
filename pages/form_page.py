@@ -303,12 +303,7 @@ with st.form("main_quiz"):
         qid   = str(q.get("QuestionID", "")).strip()
         qtext = str(q.get("QuestionText", "")).strip()
 
-        st.markdown('<div class="question-card">', unsafe_allow_html=True)
-        render_question(qid, qtext)
-
         img_url = normalize_img_url(q.get("ImageURL", ""))
-        if img_url:
-            st.image(img_url, use_container_width=True)
 
         options = [
             str(q.get("Option_A", "") or "").strip(),
@@ -316,10 +311,25 @@ with st.form("main_quiz"):
             str(q.get("Option_C", "") or "").strip(),
             str(q.get("Option_D", "") or "").strip()
         ]
-        user_answers[qid] = st.radio("Select your answer:", options=options, key=f"main_{qid}")
-        st.markdown("</div>", unsafe_allow_html=True)
+
+        # --- Container replaces CSS div ---
+        with st.container():
+            # Question text
+            st.markdown(f"**{qid}**: {qtext}")
+
+            # Image between question and options
+            if img_url:
+                st.image(img_url, use_container_width=True)
+
+            # Options
+            user_answers[qid] = st.radio(
+                "Select your answer:",
+                options=options,
+                key=f"main_{qid}"
+            )
 
     submit_main = st.form_submit_button("Submit Quiz")
+
 
 # -----------------------------
 # Handle MAIN submission
@@ -378,45 +388,55 @@ if submit_main:
         else:
             remedial_answers = {}
             with st.form("remedial_quiz"):
-                for _, rq in rem_set.iterrows():
-                    rqid         = str(rq.get("RemedialQuestionID", "")).strip()
-                    r_main_qid   = str(rq.get("MainQuestionID", "")).strip()
-                    rq_text      = str(rq.get("QuestionText", "")).strip()
+               for _, rq in rem_set.iterrows():
+                   rqid       = str(rq.get("RemedialQuestionID", "")).strip()
+                   r_main_qid = str(rq.get("MainQuestionID", "")).strip()
+                   rq_text    = str(rq.get("QuestionText", "")).strip()
 
-                    st.markdown('<div class="question-card">', unsafe_allow_html=True)
-                    render_question(rqid, rq_text)
+                   r_img = normalize_img_url(rq.get("ImageURL", ""))
 
-                    r_img = normalize_img_url(rq.get("ImageURL", ""))
-                    if r_img:
-                        st.image(r_img, use_container_width=True)
+                   r_opts = [
+                       str(rq.get("Option_A", "") or "").strip(),
+                       str(rq.get("Option_B", "") or "").strip(),
+                       str(rq.get("Option_C", "") or "").strip(),
+                       str(rq.get("Option_D", "") or "").strip()
+                   ]
 
-                    r_opts = [
-                        str(rq.get("Option_A", "") or "").strip(),
-                        str(rq.get("Option_B", "") or "").strip(),
-                        str(rq.get("Option_C", "") or "").strip(),
-                        str(rq.get("Option_D", "") or "").strip()
-                    ]
-                    remedial_answers[rqid] = st.radio(
-                        "Select your answer:",
-                        options=r_opts,
-                        key=f"remedial_{rqid}"
-                    )
-                    st.markdown("</div>", unsafe_allow_html=True)
+            # --- Container for remedial question ---
+                   with st.container():
+                # Question text
+                       st.markdown(f"**{rqid}**: {rq_text}")
 
-                submit_remedial = st.form_submit_button("Submit Remedial Quiz")
+                # Image between question and options
+                       if r_img:
+                           st.image(r_img, use_container_width=True)
 
-            if submit_remedial:
-                for _, rq in rem_set.iterrows():
-                    rqid   = str(rq.get("RemedialQuestionID", "")).strip()
-                    correct = str(rq.get("CorrectOption", "") or "").strip()
-                    given   = str(remedial_answers.get(rqid, "") or "").strip()
-                    marks   = safe_int(rq.get("Marks", 1), 1)
-                    awarded = marks if given == correct else 0
+                # Options
+                       remedial_answers[rqid] = st.radio(
+                           "Select your answer:",
+                           options=r_opts,
+                           key=f"remedial_{rqid}"
+                       )
 
+               submit_remedial = st.form_submit_button("Submit Remedial Quiz")
+
+           if submit_remedial:
+               for _, rq in rem_set.iterrows():
+                   rqid   = str(rq.get("RemedialQuestionID", "")).strip()
+                   correct = str(rq.get("CorrectOption", "") or "").strip()
+                   given   = str(remedial_answers.get(rqid, "") or "").strip()
+                   marks   = safe_int(rq.get("Marks", 1), 1)
+                   awarded = marks if given == correct else 0
                     # Log REMEDIAL attempt row per question
                     # For "Question_Number" we store the remedial question ID here.
-                    append_response_row(qnum=rqid, given=given, correct=correct, awarded=awarded, attempt_type="Remedial")
+                   append_response_row(
+                       qnum=rqid,
+                       given=given,
+                       correct=correct,
+                       awarded=awarded,
+                       attempt_type="Remedial"
+                   )  
 
-                st.success("✅ Remedial quiz submitted! Thank you.")
-    else:
-        st.success("🎉 All answers were correct! No remedial needed.")
+               st.success("✅ Remedial quiz submitted! Thank you.")
+   else:
+       st.success("🎉 All answers were correct! No remedial needed.")
