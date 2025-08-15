@@ -24,33 +24,6 @@ import requests
 # -----------------------------
 st.set_page_config(page_title="Form", layout="centered")
 
-MOBILE_CSS = """
-<style>
-    html, body, [class*="css"] { font-size: 18px !important; }
-    .question-card {
-        border: 1px solid #e2e2e2;
-        border-radius: 12px;
-        padding: 14px;
-        margin: 12px 0 18px 0;
-        background: #fafafa;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    }
-    .stRadio label {
-        display: block !important;
-        padding: 10px 14px !important;
-        border-radius: 8px;
-        margin-bottom: 8px !important;
-        background: #fff;
-        border: 1px solid #e6e6e6;
-        line-height: 1.25rem;
-    }
-    .stRadio label:hover { background: #f4f4f4; }
-    img { max-width: 100% !important; height: auto !important; }
-    .stTextInput input:focus { outline: 2px solid #a3d3ff !important; }
-</style>
-"""
-st.markdown(MOBILE_CSS, unsafe_allow_html=True)
-
 # -----------------------------
 # Anti-cheat (JS)
 # -----------------------------
