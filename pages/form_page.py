@@ -53,7 +53,7 @@ with st.form("main_quiz"):
     for _, q in main_questions.iterrows():
         # Show image if available
         if pd.notna(q.get("ImageURL")) and q["ImageURL"].strip():
-            st.image(q["ImageURL"], use_container_width=True)
+            st.image("https://i.imgur.com/abcd123.jpg", use_container_width=True)
 
         options = [q["Option_A"], q["Option_B"], q["Option_C"], q["Option_D"]]
         user_answers[q["QuestionID"]] = st.radio(
