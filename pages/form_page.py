@@ -67,6 +67,7 @@ with st.form("main_quiz"):
         # --- Image handling ---
         img_url = normalize_img_url(q.get("ImageURL", ""))
         if img_url:
+            st.write("Image debug link:", img_url)  # Debugging line
             st.image(img_url, use_container_width=True)
 
         # --- Options ---
@@ -109,6 +110,7 @@ if submit_main:
                 # --- Image handling ---
                 img_url = normalize_img_url(q.get("ImageURL", ""))
                 if img_url:
+                    st.write("Image debug link:", img_url)  # Debugging line
                     st.image(img_url, use_container_width=True)
 
                 options = [
