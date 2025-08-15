@@ -52,7 +52,7 @@ user_answers = {}
 with st.form("main_quiz"):
     for _, q in main_questions.iterrows():
         # Get and clean the ImageURL
-        img_url = str(q.get("ImageURL", "")).strip()
+        img_url = str(q.get("ImageURL", "") or "").strip()
         
         # Only display if it's not empty and not the placeholder link
         if img_url and img_url != "https://drive.google.com/uc?export=view&id=":
@@ -107,7 +107,7 @@ if submitted:
             with st.form("remedial_quiz"):
                 for _, rq in remedial_questions_to_display.iterrows():
                     # Get and clean the ImageURL
-                    img_url = str(rq.get("ImageURL", "")).strip()
+                    img_url = str(rq.get("ImageURL", "") or "").strip()
 
                     # Display if valid
                     if img_url and img_url != "https://drive.google.com/uc?export=view&id=":
