@@ -1,142 +1,73 @@
-import streamlit as st
-import pandas as pd
-import gspread
-from google.oauth2.service_account import Credentials
-
-# --- Page config ---
-st.set_page_config(page_title="Form Page", layout="wide")
-
-# --- Get URL query parameters ---
-params = st.query_params
-subject = params.get("subject", "")
-subtopic_id = params.get("subtopic_id", "")
-
-if not subject or not subtopic_id:
-    st.error("❌ Missing subject or subtopic_id in URL.")
-    st.stop()
-
-# --- Connect to Google Sheets ---
-scope = [
-    "https://spreadsheets.google.com/feeds",
-    "https://www.googleapis.com/auth/drive"
-]
-creds = Credentials.from_service_account_info(
-    st.secrets["gcp_service_account"], scopes=scope
-)
-client = gspread.authorize(creds)
-
-spreadsheet_url = st.secrets["google"]["spreadsheet_ids"][subject.lower()]
-sheet = client.open_by_url(spreadsheet_url)
-
-# --- Load data from both sheets ---
-try:
-    main_df = pd.DataFrame(sheet.worksheet("Main").get_all_records())
-    remedial_df = pd.DataFrame(sheet.worksheet("Remedial").get_all_records())
-except gspread.exceptions.WorksheetNotFound as e:
-    st.error(f"❌ Worksheet not found: {e}")
-    st.stop()
-
-# --- Filter main questions for this subtopic ---
-main_questions = main_df[main_df["SubtopicID"] == subtopic_id]
-
-if main_questions.empty:
-    st.warning("⚠ No questions found for this subtopic.")
-    st.stop()
-
-st.title(f"📄 {subject} - {subtopic_id.replace('_',' ')}")
-
-# --- Main Quiz ---
 st.header("Main Quiz")
+
 user_answers = {}
 
+# --- MAIN QUIZ FORM ---
 with st.form("main_quiz"):
     for _, q in main_questions.iterrows():
-        # Get and clean the ImageURL
-        img_url = str(q.get("ImageURL", "") or "").strip()
         
-        # Only display if it's not empty and not the placeholder link
+        # --- Image handling ---
+        img_url = str(q.get("ImageURL", "") or "").strip()
         if img_url and img_url != "https://drive.google.com/uc?export=view&id=":
             st.image(img_url, use_container_width=True)
 
-        # Display question options
+        # --- Options ---
         options = [
-            q.get("Option_A", "").strip(),
-            q.get("Option_B", "").strip(),
-            q.get("Option_C", "").strip(),
-            q.get("Option_D", "").strip()
+            str(q.get("Option_A", "") or "").strip(),
+            str(q.get("Option_B", "") or "").strip(),
+            str(q.get("Option_C", "") or "").strip(),
+            str(q.get("Option_D", "") or "").strip()
         ]
+
+        # --- Question ---
         user_answers[q["QuestionID"]] = st.radio(
-            f"{q['QuestionText']}",
-            options,
+            label=f"{q['QuestionText']}",
+            options=options,
             key=f"main_{q['QuestionID']}"
         )
-    submitted = st.form_submit_button("Submit Answers")
 
-if submitted:
-    score = sum(
-        1
-        for qid, ans in user_answers.items()
-        if ans == main_questions.loc[
-            main_questions["QuestionID"] == qid, "CorrectOption"
-        ].iloc[0]
-    )
-    st.success(f"✅ Your main quiz score: {score}/{len(main_questions)}")
+    submit_main = st.form_submit_button("Submit Quiz")
 
-    # Find wrong answers
-    wrong_q_ids = [
-        qid
-        for qid, ans in user_answers.items()
-        if ans != main_questions.loc[
-            main_questions["QuestionID"] == qid, "CorrectOption"
-        ].iloc[0]
-    ]
+# --- After Main Quiz Submission ---
+if submit_main:
+    st.success("✅ Main quiz submitted!")
+    
+    # --- Find incorrect answers ---
+    wrong_questions = []
+    for _, q in main_questions.iterrows():
+        correct = str(q.get("Correct_Answer", "") or "").strip()
+        given = user_answers.get(q["QuestionID"], "").strip()
+        if given != correct:
+            wrong_questions.append(q)
 
-    if wrong_q_ids:
-        st.warning("⚠ Some answers were incorrect. Please take the remedial quiz below.")
+    # --- Show remedial quiz if needed ---
+    if wrong_questions:
+        st.warning("⚠️ You got some answers wrong. Let's try the remedial quiz!")
 
-        # --- Remedial Quiz ---
-        st.header("Remedial Quiz")
-        remedial_user_answers = {}
-        remedial_questions_to_display = remedial_df[
-            remedial_df["MainQuestionID"].isin(wrong_q_ids)
-        ]
+        with st.form("remedial_quiz"):
+            remedial_answers = {}
+            for q in wrong_questions:
+                img_url = str(q.get("ImageURL", "") or "").strip()
+                if img_url and img_url != "https://drive.google.com/uc?export=view&id=":
+                    st.image(img_url, use_container_width=True)
 
-        if remedial_questions_to_display.empty:
-            st.info("ℹ No remedial questions found for your wrong answers.")
-        else:
-            with st.form("remedial_quiz"):
-                for _, rq in remedial_questions_to_display.iterrows():
-                    # Get and clean the ImageURL
-                    img_url = str(rq.get("ImageURL", "") or "").strip()
+                options = [
+                    str(q.get("Option_A", "") or "").strip(),
+                    str(q.get("Option_B", "") or "").strip(),
+                    str(q.get("Option_C", "") or "").strip(),
+                    str(q.get("Option_D", "") or "").strip()
+                ]
 
-                    # Display if valid
-                    if img_url and img_url != "https://drive.google.com/uc?export=view&id=":
-                        st.image(img_url, use_container_width=True)
-                    
-                    options = [
-                        rq.get("Option_A", "").strip(),
-                        rq.get("Option_B", "").strip(),
-                        rq.get("Option_C", "").strip(),
-                        rq.get("Option_D", "").strip()
-                    ]
-                    remedial_user_answers[rq["RemedialQuestionID"]] = st.radio(
-                        f"{rq['QuestionText']}",
-                        options,
-                        key=f"remedial_{rq['RemedialQuestionID']}"
-                    )
-                remedial_submitted = st.form_submit_button("Submit Remedial Answers")
-
-            if remedial_submitted:
-                remedial_score = sum(
-                    1
-                    for rqid, ans in remedial_user_answers.items()
-                    if ans == remedial_questions_to_display.loc[
-                        remedial_questions_to_display["RemedialQuestionID"] == rqid,
-                        "CorrectOption"
-                    ].iloc[0]
+                remedial_answers[q["QuestionID"]] = st.radio(
+                    label=f"{q['QuestionText']}",
+                    options=options,
+                    key=f"remedial_{q['QuestionID']}"
                 )
-                st.success(
-                    f"✅ Your remedial quiz score: {remedial_score}/{len(remedial_questions_to_display)}"
-                )
+
+            submit_remedial = st.form_submit_button("Submit Remedial Quiz")
+
+        if submit_remedial:
+            st.success("✅ Remedial quiz submitted!")
+            # Here you can add Google Sheets logging or Telegram notifications
     else:
-        st.success("🎉 All answers correct! No remedial needed.")
+        st.success("🎉 All answers were correct! No remedial needed.")
