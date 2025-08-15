@@ -9,11 +9,11 @@ def normalize_img_url(value):
     if not value:
         return ""
     # Already a full Drive direct link
-    if value.startswith("https://drive.google.com/uc?export=view&id="):
+    if value.startswith("https://drive.google.com/uc?export=download&id="):
         return value
     # Just a file ID (no slashes, long enough to be a Drive ID)
     if len(value) > 20 and "/" not in value:
-        return f"https://drive.google.com/uc?export=view&id={value}"
+        return f"https://drive.google.com/uc?export=download&id={value}"
     return value
 
 # --- Page config ---
