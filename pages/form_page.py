@@ -53,7 +53,7 @@ with st.form("main_quiz"):
     for _, q in main_questions.iterrows():
         # Show image if available
         if pd.notna(q.get("ImageURL")) and q["ImageURL"].strip():
-            st.image(q["ImageURL"], use_column_width=True)
+            st.image(q["ImageURL"], use_container_width=True)
 
         options = [q["Option_A"], q["Option_B"], q["Option_C"], q["Option_D"]]
         user_answers[q["QuestionID"]] = st.radio(
@@ -99,7 +99,7 @@ if submitted:
                 for _, rq in remedial_questions_to_display.iterrows():
                     # Show image if available
                     if pd.notna(rq.get("ImageURL")) and rq["ImageURL"].strip():
-                        st.image(rq["ImageURL"], use_column_width=True)
+                        st.image(rq["ImageURL"], use_container_width=True)
                     
                     options = [rq["Option_A"], rq["Option_B"], rq["Option_C"], rq["Option_D"]]
                     remedial_user_answers[rq["RemedialQuestionID"]] = st.radio(
