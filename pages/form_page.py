@@ -51,12 +51,20 @@ user_answers = {}
 
 with st.form("main_quiz"):
     for _, q in main_questions.iterrows():
-        # Show image if available
+        # Get and clean the ImageURL
         img_url = str(q.get("ImageURL", "")).strip()
+        
+        # Only display if it's not empty and not the placeholder link
         if img_url and img_url != "https://drive.google.com/uc?export=view&id=":
             st.image(img_url, use_container_width=True)
 
-        options = [q["Option_A"], q["Option_B"], q["Option_C"], q["Option_D"]]
+        # Display question options
+        options = [
+            q.get("Option_A", "").strip(),
+            q.get("Option_B", "").strip(),
+            q.get("Option_C", "").strip(),
+            q.get("Option_D", "").strip()
+        ]
         user_answers[q["QuestionID"]] = st.radio(
             f"{q['QuestionText']}",
             options,
@@ -98,12 +106,19 @@ if submitted:
         else:
             with st.form("remedial_quiz"):
                 for _, rq in remedial_questions_to_display.iterrows():
-                    # Show image if available
-                    img_url = str(q["ImageURL"]).strip()
+                    # Get and clean the ImageURL
+                    img_url = str(rq.get("ImageURL", "")).strip()
+
+                    # Display if valid
                     if img_url and img_url != "https://drive.google.com/uc?export=view&id=":
                         st.image(img_url, use_container_width=True)
                     
-                    options = [rq["Option_A"], rq["Option_B"], rq["Option_C"], rq["Option_D"]]
+                    options = [
+                        rq.get("Option_A", "").strip(),
+                        rq.get("Option_B", "").strip(),
+                        rq.get("Option_C", "").strip(),
+                        rq.get("Option_D", "").strip()
+                    ]
                     remedial_user_answers[rq["RemedialQuestionID"]] = st.radio(
                         f"{rq['QuestionText']}",
                         options,
