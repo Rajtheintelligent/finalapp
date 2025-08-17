@@ -471,7 +471,7 @@ with st.form("main_quiz"):
             )
 
     submit_main = st.form_submit_button("Submit Quiz")
-  st.success(f"🎯 You scored {earned_points} out of {total_points} in the main quiz!")
+      st.success(f"🎯 You scored {earned_points} out of {total_points} in the main quiz!")
 # -----------------------------
 # Handle MAIN submission
 # -----------------------------
