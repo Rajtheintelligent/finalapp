@@ -39,7 +39,7 @@ if board == "SSC" and subject == "English":
     st.subheader("📚 Grammar Topics")
     subtopics = {
         "Tenses (Past, Present, Future)": {
-            "Form": "https://example.com/form-tenses",
+            "Form": "tenses",
             "Kahoot": "https://example.com/kahoot-tenses",
             "Blooket": "https://example.com/blooket-tenses"
         },
@@ -108,3 +108,4 @@ if board == "SSC" and subject == "English":
     show_subtopics(subtopics)
 else:
     st.info("Please select SSC Board and English subject to view grammar topics.")
+
