@@ -33,42 +33,87 @@ st.set_page_config(page_title="Form", layout="centered")
 # -----------------------------
 # Anti-cheat (JS + minimal CSS)
 # -----------------------------
-ANTI_CHEAT = """
+ANTI_CHEAT_JS = """
 <script>
-// Block context menu
-document.addEventListener('contextmenu', e => e.preventDefault());
+// ===== CONFIG =====
+const UNLOCK_CODE = new URLSearchParams(window.location.search).get('unlock_code');
 
-// Block selection & copy
-document.addEventListener('selectstart', e => e.preventDefault());
-document.addEventListener('copy', e => e.preventDefault());
+// ===== Utility: lock screen =====
+function lockQuiz(reason) {
+  if (UNLOCK_CODE) { 
+    localStorage.removeItem('quiz_locked');
+    return; // teacher unlocked
+  }
+  
+  localStorage.setItem('quiz_locked', '1');
 
-// Block common copy/view-source/print shortcuts
-document.addEventListener('keydown', function(e) {
-  const k = (e.key || "").toLowerCase();
-  if ((e.ctrlKey || e.metaKey) && ['c','x','p','s','u','a'].includes(k)) { e.preventDefault(); }
-});
+  // Disable all inputs/buttons
+  document.querySelectorAll('input, button, select, textarea').forEach(el => el.disabled = true);
 
-let warnCount = 0;
-function warnUser() {
-  warnCount++;
-  alert("⚠ You switched away from the quiz! (" + warnCount + " of 3)");
-  if (warnCount >= 3) {
-    alert("Submitting due to repeated switching.");
-    const btns = Array.from(document.querySelectorAll('button'));
-    // Prefer primary submit button if present
-    const primary = btns.find(b => (b.getAttribute('kind') || '').includes('primary')) || btns[0];
-    if (primary) primary.click();
+  // Overlay
+  let overlay = document.createElement('div');
+  overlay.style.position = 'fixed';
+  overlay.style.top = 0;
+  overlay.style.left = 0;
+  overlay.style.width = '100%';
+  overlay.style.height = '100%';
+  overlay.style.background = 'rgba(0,0,0,0.85)';
+  overlay.style.color = 'white';
+  overlay.style.display = 'flex';
+  overlay.style.flexDirection = 'column';
+  overlay.style.justifyContent = 'center';
+  overlay.style.alignItems = 'center';
+  overlay.style.zIndex = 9999;
+  overlay.innerHTML = `
+    <h2 style="color: red; font-size: 28px;">🚫 Quiz Locked!</h2>
+    <p style="max-width: 80%; text-align: center;">
+      You switched away from the quiz.<br>
+      Please contact your teacher to reopen it.
+    </p>
+  `;
+  document.body.appendChild(overlay);
+
+  // Vibrate on mobile
+  if (navigator.vibrate) {
+    navigator.vibrate([200, 100, 200]);
   }
 }
-document.addEventListener("visibilitychange", function() { if (document.hidden) warnUser(); });
-window.addEventListener("blur", warnUser, { passive: true });
+
+// ===== Check lock status on load =====
+if (localStorage.getItem('quiz_locked') && !UNLOCK_CODE) {
+  window.addEventListener('load', () => lockQuiz("already locked"));
+}
+
+// ===== Anti-cheat events =====
+document.addEventListener('contextmenu', event => event.preventDefault());
+document.addEventListener('selectstart', event => event.preventDefault());
+document.addEventListener('copy', event => event.preventDefault());
+document.addEventListener('keydown', function(e) {
+  const k = e.key.toLowerCase();
+  if ((e.ctrlKey || e.metaKey) && ['c','x','p','s','u','a'].includes(k)) {
+    e.preventDefault();
+  }
+});
+
+function triggerCheatLock() {
+  lockQuiz("tab switch");
+}
+
+document.addEventListener("visibilitychange", function() {
+  if (document.hidden) triggerCheatLock();
+});
+window.addEventListener("blur", triggerCheatLock, { passive: true });
 </script>
 <style>
-/* Disable text selection globally */
-* { -webkit-user-select: none; -ms-user-select: none; user-select: none; }
+* {
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
 </style>
 """
-st.markdown(ANTI_CHEAT, unsafe_allow_html=True)
+st.markdown(ANTI_CHEAT_JS, unsafe_allow_html=True)
+
 
 # -----------------------------
 # Config toggles
@@ -265,16 +310,22 @@ with c2:
     student_id   = st.text_input("Student ID", max_chars=30)
 
 student_row = None
-if tuition_code and student_id and not register_df.empty:
+verified = False
+
+if tuition_code and student_id:
     mask = (
         register_df["Tuition_Code"].astype(str).str.strip().eq(str(tuition_code).strip()) &
         register_df["Student_ID"].astype(str).str.strip().eq(str(student_id).strip())
     )
     if mask.any():
-        student_row = register_df.loc[mask].iloc[0]
+        student_row = register_df[mask].iloc[0]
         st.success(f"✅ Verified: {student_row['Student_Name']} ({student_row['Tuition_Name']})")
+        verified = True
     else:
-        st.warning("⚠ Not found in Register. You can attempt the quiz, but you will be marked **Unregistered** and no Telegram will be sent.")
+        st.error("❌ Invalid code or ID. Please try again.")
+ # Only show quiz if verified
+if not verified:
+    st.stop()     
 
 # -----------------------------
 # Load Questions (Main & Remedial from same book)
@@ -420,7 +471,7 @@ with st.form("main_quiz"):
             )
 
     submit_main = st.form_submit_button("Submit Quiz")
-
+  st.success(f"🎯 You scored {earned_points} out of {total_points} in the main quiz!")
 # -----------------------------
 # Handle MAIN submission
 # -----------------------------
