@@ -396,7 +396,7 @@ def has_existing_main_attempt(student_id_val, subtopic_val) -> bool:
         return False
 
 if allow_retake != "1" and student_row is not None and has_existing_main_attempt(student_id, subtopic_id):
-    st.error("Thank Youfor your Response. Append `?allow_retake=1` in the URL to override.")
+    st.success("✅ Thank you for your response. Append `?allow_retake=1` in the URL to override.")
     st.stop()
 
 # -----------------------------
