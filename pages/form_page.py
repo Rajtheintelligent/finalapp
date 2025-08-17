@@ -323,9 +323,9 @@ if tuition_code and student_id:
         verified = True
     else:
         st.error("❌ Invalid code or ID. Please try again.")
- # Only show quiz if verified
+# Only show quiz if verified
 if not verified:
-    st.stop()     
+    st.stop()
 
 # -----------------------------
 # Load Questions (Main & Remedial from same book)
@@ -471,7 +471,7 @@ with st.form("main_quiz"):
             )
 
     submit_main = st.form_submit_button("Submit Quiz")
-      st.success(f"🎯 You scored {earned_points} out of {total_points} in the main quiz!")
+
 # -----------------------------
 # Handle MAIN submission
 # -----------------------------
@@ -500,6 +500,8 @@ if submit_main:
 
     # Mark session attempt to block re-submission
     st.session_state[attempt_key] = True
+
+    st.success(f"🎯 You scored {earned_points} out of {total_points} in the main quiz!")
 
     # Telegram notifications (registered only)
     if student_row is not None:
@@ -574,6 +576,9 @@ if submit_main:
                     submit_remedial = st.form_submit_button("Submit Remedial Quiz")
 
                 if submit_remedial:
+                    rem_total = 0
+                    rem_earned = 0
+
                     # Iterate the actual rem_set (original df) for authoritative rows
                     for _, row in rem_set.iterrows():
                         rqid    = str(row.get("RemedialQuestionID", "")).strip()
@@ -581,6 +586,9 @@ if submit_main:
                         given   = str(remedial_answers.get(rqid, "") or "").strip()
                         marks   = safe_int(row.get("Marks", 1), 1)
                         awarded = marks if given == correct and given != "" else 0
+
+                        rem_total  += marks
+                        rem_earned += awarded
 
                         append_response_row(
                             qnum=rqid,
@@ -590,6 +598,6 @@ if submit_main:
                             attempt_type="Remedial"
                         )
 
-                    st.success("✅ Remedial quiz submitted! Thank you.")
+                    st.success(f"✅ Remedial quiz submitted! Score: {rem_earned}/{rem_total}")
     else:
         st.success("🎉 All answers were correct! No remedial needed.")
