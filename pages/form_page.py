@@ -232,7 +232,7 @@ bank_map = {
     "science_1": "science_1",
     "science2": "science_2",
     "science_2": "science_2",
-    "ssc_english": "ssc_english_grammar",
+    "ssc_english": "ssc_english",
 }
 if bank in bank_map:
     bank = bank_map[bank]
