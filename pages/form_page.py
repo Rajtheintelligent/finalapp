@@ -371,7 +371,7 @@ except gspread.exceptions.WorksheetNotFound:
 # -----------------------------
 attempt_key = f"attempt::{bank}::{subtopic_id}::{student_id or 'anon'}"
 if st.session_state.get(attempt_key):
-    st.error("⛔ You have already submitted this MAIN attempt in this session.")
+    st.error("Thank you")
     st.stop()
 
 def has_existing_main_attempt(student_id_val, subtopic_val) -> bool:
