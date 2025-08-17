@@ -28,7 +28,7 @@ def show_subtopics(subtopics):
         with st.expander(f"🔹 {topic}"):
             col1, col2, col3 = st.columns(3)
             with col1:
-                form_url = f"/form_page?subject={subject}&subtopic_id={ids['Form']}"
+                form_url = f"/form_page?subject=english&bank=ssc_english&subtopic_id={links['Form']}"
                 st.link_button("📄 Open Form", links["Form"])
             with col2:
                 st.link_button("🎯 Open Kahoot", links["Kahoot"])
@@ -109,5 +109,6 @@ if board == "SSC" and subject == "English":
     show_subtopics(subtopics)
 else:
     st.info("Please select SSC Board and English subject to view grammar topics.")
+
 
 
