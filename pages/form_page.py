@@ -141,7 +141,7 @@ with st.expander("👤 Student Verification", expanded=not ss.get("student_verif
                 st.success(f"✅ Verified: {student_row['Student_Name']} ({student_row['Tuition_Name']})")
                 ss["student_verified"] = True
                 ss["student_info"] = {
-                    "StudentName": student_row.get["Student_Name", ""],
+                    "StudentName": student_row.get("Student_Name", ""),
                     "Class": student_row.get("Class", ""),
                     "RollNo": student_row.get("Roll_No", ""),
                     "StudentEmail": student_row.get("Student_Email", ""),
