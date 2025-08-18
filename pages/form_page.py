@@ -16,6 +16,7 @@ import base64
 import random
 import hashlib
 import requests
+ss = st.session_state
 
 # ---------- CONFIG / SETUP ----------
 st.set_page_config(page_title="Quiz Form", layout="centered")
