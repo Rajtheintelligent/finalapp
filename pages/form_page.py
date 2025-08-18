@@ -1,492 +1,587 @@
-# pages/form_page.py
+import time
+import ssl
+import smtplib
+from email.mime.text import MIMEText
+from datetime import datetime
+from io import BytesIO
+
 import streamlit as st
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
-from datetime import datetime
-import time
-import io
-import matplotlib.pyplot as plt
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.utils import ImageReader
-import smtplib
-from email.message import EmailMessage
-import hashlib
-import random
-import re
 
-# --------------------- CONFIG ---------------------
-st.set_page_config(page_title="Quiz Form", layout="centered")
+# ──────────────────────────────────────────────────────────────────────────────
+# Page config & styling (hide sidebar just for this page)
+# ──────────────────────────────────────────────────────────────────────────────
+st.set_page_config(page_title="Assessment Form", layout="wide")
 
-# Quick toggles
-SHUFFLE_QUESTIONS = True
-SHUFFLE_OPTIONS = True
-REMEDIAL_DELAY_SECONDS = 20  # change delay here
-
-# --------------------- SMALL HELPERS ---------------------
-def pick_query_param(name, default=""):
-    v = st.experimental_get_query_params().get(name, [default])
-    return v[0] if isinstance(v, list) else v
-
-def safe_str(x):
-    return "" if x is None else str(x)
-
-def safe_strip(x):
-    return safe_str(x).strip()
-
-def stable_shuffle(items, seed_str):
-    seq = list(items)
-    h = int(hashlib.md5(seed_str.encode("utf-8")).hexdigest(), 16)
-    rnd = random.Random(h)
-    rnd.shuffle(seq)
-    return seq
-
-def normalize_img_url(value: str) -> str:
-    """Try to normalize Google Drive share links and plain file ids to a direct view URL; otherwise return stripped input."""
-    v = safe_strip(value)
-    if not v:
-        return ""
-    if "drive.google.com" in v:
-        # If it's a "uc?export=view&id=" or "uc?export=download&id=" already fine
-        if "uc?export=view" in v or "uc?export=download" in v:
-            return v
-        # try to extract /d/FILE_ID
-        m = re.search(r"/d/([a-zA-Z0-9_-]{10,})", v)
-        if m:
-            return f"https://drive.google.com/uc?export=view&id={m.group(1)}"
-        # try id=...
-        m2 = re.search(r"id=([a-zA-Z0-9_-]{10,})", v)
-        if m2:
-            return f"https://drive.google.com/uc?export=view&id={m2.group(1)}"
-    # if looks like a file id alone
-    if re.fullmatch(r"[a-zA-Z0-9_-]{10,}", v):
-        return f"https://drive.google.com/uc?export=view&id={v}"
-    return v
-
-def get_correct_value(row):
-    # Accept different correct answer column names
-    for name in ("CorrectOption", "Correct_Answer", "CorrectAnswer", "Correct"):
-        if name in row and safe_strip(row[name]):
-            return safe_strip(row[name])
-    return ""
-
-# --------------------- UI: hide menu & sidebar (unless unlock_code present) ---------------------
-unlock_code = pick_query_param("unlock_code", "")
-if not unlock_code:
-    hide_style = """
-    <style>
-      /* hide top-right menu and header */
-      header, footer, .css-1d391kg {visibility: hidden;}
-      /* hide sidebar */
-      .css-1d391kg {display:none !important;}
-    </style>
-    """
-    st.markdown(hide_style, unsafe_allow_html=True)
-
-# Optional anti-cheat (tab switch) - can be enabled/disabled as needed
-ANTI_CHEAT_JS = """
-<script>
-const UNLOCK= new URLSearchParams(window.location.search).get('unlock_code');
-if(!UNLOCK){
-  document.addEventListener('contextmenu', e=>e.preventDefault());
-  document.addEventListener('selectstart', e=>e.preventDefault());
-  document.addEventListener('copy', e=>e.preventDefault());
-  function lockit(){ window.alert('You left the tab — quiz locked. Contact teacher.'); }
-  document.addEventListener('visibilitychange', function(){ if(document.hidden) lockit(); });
-  window.addEventListener('blur', lockit);
-}
-</script>
+HIDE_SIDEBAR_CSS = """
+<style>
+[data-testid="stSidebar"] {display: none;}
+[data-testid="stHeader"] { z-index: 2; }
+</style>
 """
-st.markdown(ANTI_CHEAT_JS, unsafe_allow_html=True)
+st.markdown(HIDE_SIDEBAR_CSS, unsafe_allow_html=True)
 
-# --------------------- Get params ---------------------
-subject = pick_query_param("subject", "").strip()
-subtopic_id = pick_query_param("subtopic_id", "").strip()
+# ──────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ──────────────────────────────────────────────────────────────────────────────
+def pick_query_param(name: str, default: str = "") -> str:
+    """Read a query param safely with the new st.query_params API."""
+    params = st.query_params  # returns dict of strings
+    v = params.get(name, default)
+    return v if v else default
 
-if not subject or not subtopic_id:
-    st.error("Missing required URL params: ?subject=...&subtopic_id=...")
-    st.stop()
+def as_text(val) -> str:
+    """Robustly convert any cell value to trimmed string (avoids .strip on ints)."""
+    return str(val or "").strip()
 
-# --------------------- Google Sheets auth & sheet URLs in secrets ---------------------
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-try:
-    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
-except Exception as e:
-    st.error("Missing or invalid gcp_service_account in secrets. Please add service account JSON to secrets.")
-    st.stop()
-client = gspread.authorize(creds)
-
-try:
-    question_sheet_url = st.secrets["google"]["question_sheet_url"]
-    response_sheet_url = st.secrets["google"]["response_sheet_url"]
-    register_sheet_url = st.secrets["google"]["register_sheet_url"]
-except Exception as e:
-    st.error("Please add google.question_sheet_url, google.response_sheet_url and google.register_sheet_url to secrets.toml.")
-    st.stop()
-
-# --------------------- Load Register (student verification) ---------------------
-try:
-    reg_book = client.open_by_url(register_sheet_url)
-    # pick first worksheet by name fallback
-    reg_ws = None
-    for candidate in ("Register", "register", "Sheet1"):
-        try:
-            reg_ws = reg_book.worksheet(candidate)
-            break
-        except Exception:
-            continue
-    if reg_ws is None:
-        reg_ws = reg_book.worksheets()[0]
-    register_df = pd.DataFrame(reg_ws.get_all_records())
-    # normalize header names
-    register_df.columns = register_df.columns.str.strip()
-except Exception as e:
-    st.error("Unable to load Register sheet or worksheet. Make sure the URL is correct and service account has access.")
-    st.stop()
-
-# --------------------- Student Verification UI ---------------------
-st.title("🔐 Student Verification")
-col1, col2, col3 = st.columns([2,3,1])
-with col1:
-    tuition_code_in = st.text_input("Tuition Code", max_chars=30)
-with col2:
-    student_id_in = st.text_input("Student ID", max_chars=50)
-with col3:
-    verify_btn = st.button("Submit Verification")
-
-verified = False
-student_row = None
-
-if verify_btn:
-    if not tuition_code_in or not student_id_in:
-        st.error("Please enter both Tuition Code and Student ID then click Submit Verification.")
-    else:
-        mask = (register_df.get("Tuition_Code", register_df.columns[0]).astype(str).str.strip() == tuition_code_in.strip()) & \
-               (register_df.get("Student_ID", register_df.columns[1]).astype(str).str.strip() == student_id_in.strip())
-        if mask.any():
-            student_row = register_df[mask].iloc[0].to_dict()
-            st.success(f"✅ Verified: {student_row.get('Student_Name', 'Unknown')}")
-            verified = True
-            st.session_state["student_row"] = student_row
-            st.session_state["tuition_code"] = tuition_code_in.strip()
-            st.session_state["student_id"] = student_id_in.strip()
-        else:
-            st.error("❌ Invalid code or ID. Please try again.")
-
-# If already verified in session, reuse
-if "student_row" in st.session_state:
-    student_row = st.session_state["student_row"]
-    tuition_code_in = st.session_state.get("tuition_code", tuition_code_in)
-    student_id_in = st.session_state.get("student_id", student_id_in)
-    verified = True
-
-if not verified:
-    st.stop()
-
-# --------------------- Load Questions (Main & Remedial) ---------------------
-try:
-    qb = client.open_by_url(question_sheet_url)
-    def open_by_candidates(book, candidates):
-        for c in candidates:
-            try:
-                return book.worksheet(c)
-            except Exception:
-                continue
-        # fallback first
-        return book.worksheets()[0]
-    main_ws = open_by_candidates(qb, ["Main", "main"])
-    remedial_ws = open_by_candidates(qb, ["Remedial", "remedial"])
-    main_df = pd.DataFrame(main_ws.get_all_records())
-    remedial_df = pd.DataFrame(remedial_ws.get_all_records())
-    main_df.columns = main_df.columns.str.strip()
-    remedial_df.columns = remedial_df.columns.str.strip()
-except Exception as e:
-    st.error("Unable to load Main/Remedial worksheets from questions sheet. Check sharing & names.")
-    st.stop()
-
-if "SubtopicID" not in main_df.columns:
-    st.error("Main sheet must include 'SubtopicID' column.")
-    st.stop()
-
-# Filter main questions
-main_df["SubtopicID"] = main_df["SubtopicID"].astype(str).str.strip()
-main_questions = main_df[main_df["SubtopicID"] == subtopic_id].copy()
-if main_questions.empty:
-    st.warning("No main questions found for this subtopic.")
-    st.stop()
-
-# --------------------- Responses sheet open ---------------------
-try:
-    rb = client.open_by_url(response_sheet_url)
-    # pick worksheet by name fallback
-    out_ws = None
-    for c in ("Responses", "responses", "Sheet1"):
-        try:
-            out_ws = rb.worksheet(c)
-            break
-        except Exception:
-            continue
-    if out_ws is None:
-        out_ws = rb.worksheets()[0]
-except Exception:
-    st.error("Unable to open Responses sheet. Check URL & sharing.")
-    st.stop()
-
-def append_response_row(timestamp, student_id_v, student_name_v, tuition_code_v,
-                        chapter_v, subtopic_v, qnum, given, correct, awarded, attempt_type):
-    # Best-effort append
-    try:
-        out_ws.append_row([timestamp, student_id_v, student_name_v, tuition_code_v,
-                           chapter_v, subtopic_v, qnum, given, correct, awarded, attempt_type])
-    except Exception:
-        pass
-
-# --------------------- UI header ---------------------
-st.title(f"📘 {subject.title()} — {subtopic_id.replace('_',' ')}")
-
-# Stable seed for shuffling
-seed_base = f"{student_id_in or 'anon'}::{subtopic_id}"
-
-# --------------------- MAIN QUIZ UI ---------------------
-st.header("Main Quiz")
-q_rows = list(main_questions.itertuples(index=False))
-
-if SHUFFLE_QUESTIONS:
-    q_rows = stable_shuffle(q_rows, seed_base + "::Q")
-
-# session states
-if "main_user_answers" not in st.session_state:
-    st.session_state.main_user_answers = {}
-if "main_submitted" not in st.session_state:
-    st.session_state.main_submitted = False
-if "main_results" not in st.session_state:
-    st.session_state.main_results = {}
-
-def all_answered_main():
-    for row in q_rows:
-        qid = safe_strip(row._asdict().get("QuestionID",""))
-        if not st.session_state.main_user_answers.get(qid):
-            return False
+def valid_image_url(url: str) -> bool:
+    """Accept non-empty, non-placeholder URLs."""
+    if not url:
+        return False
+    if url == "https://drive.google.com/uc?export=view&id=":
+        return False
     return True
 
-with st.form("main_quiz"):
-    for row in q_rows:
-        rd = row._asdict()
-        qid = safe_strip(rd.get("QuestionID",""))
-        qtext = safe_strip(rd.get("QuestionText",""))
-        img = normalize_img_url(rd.get("ImageURL",""))
-        # options
-        opts = [safe_strip(rd.get("Option_A","")), safe_strip(rd.get("Option_B","")),
-                safe_strip(rd.get("Option_C","")), safe_strip(rd.get("Option_D",""))]
-        opts = [o for o in opts if o]
-        disp_opts = stable_shuffle(opts, seed_base + f"::OPT::{qid}") if SHUFFLE_OPTIONS else opts
-        st.markdown(f"**{qid} — {qtext}**")
-        if img:
-            st.image(img, use_container_width=True)
-        # populate default from session_state if present
-        prev = st.session_state.main_user_answers.get(qid, None)
-        try:
-            index = disp_opts.index(prev) if prev in disp_opts else 0
-        except Exception:
-            index = 0
-        sel = st.radio("Select your answer:", disp_opts, key=f"main_{qid}", index=index)
-        st.session_state.main_user_answers[qid] = sel
-        st.markdown("---")
-    submit_main = st.form_submit_button("Submit Main Quiz")
+def render_image_if_any(url: str):
+    url = as_text(url)
+    if valid_image_url(url):
+        # Show image and a tiny 'open image' link
+        st.image(url, use_container_width=True)
+        st.markdown(f"[Open image in new tab]({url})")
 
-# Grade main submission
-if submit_main:
-    if not all_answered_main():
-        st.error("All questions are compulsory. Please answer every question before submitting.")
-    else:
-        total = 0
-        earned = 0
-        wrong_rows = []
-        for _, q in main_questions.iterrows():
-            qid = safe_strip(q.get("QuestionID",""))
-            correct = get_correct_value(q)
-            given = safe_strip(st.session_state.main_user_answers.get(qid,""))
-            marks = int(q.get("Marks") or 1)
-            total += marks
-            awarded = marks if (given != "" and given == correct) else 0
-            earned += awarded
-            append_response_row(datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                student_id_in, student_row.get("Student_Name",""), tuition_code_in,
-                                subject, subtopic_id, qid, given, correct, awarded, "Main")
-            if awarded == 0:
-                wrong_rows.append(q)
-        st.session_state.main_results = {"total": total, "earned": earned, "wrong": wrong_rows}
-        st.session_state.main_submitted = True
-        st.success(f"🎯 Main Score: {earned}/{total}")
+def require_all_answered(answer_map: dict) -> list[str]:
+    """Return list of question IDs still unanswered (value is None or empty)."""
+    missing = []
+    for qid, ans in answer_map.items():
+        if ans is None or as_text(ans) == "":
+            missing.append(qid)
+    return missing
 
-# --------------------- Show main review (always kept visible after submit) ---------------------
-if st.session_state.get("main_submitted", False):
-    st.markdown("## Main Review (Your attempt)")
-    mr = st.session_state.main_results
-    st.success(f"Score: {mr['earned']}/{mr['total']}")
-    if mr["wrong"]:
-        st.error("These were incorrect (your answer vs correct):")
-        rows = []
-        for q in mr["wrong"]:
-            qid = safe_strip(q.get("QuestionID",""))
-            qtext = safe_strip(q.get("QuestionText",""))
-            given = safe_strip(st.session_state.main_user_answers.get(qid,""))
-            correct = get_correct_value(q)
-            rows.append({"QuestionID": qid, "Question": qtext, "Your": given, "Correct": correct})
-        st.table(pd.DataFrame(rows))
-    else:
-        st.success("All main answers correct!")
+def calc_score(df_subset: pd.DataFrame, answers: dict) -> tuple[int, list[str]]:
+    """Return (score, wrong_question_ids). Assumes CorrectOption is the correct answer text."""
+    wrong = []
+    score = 0
+    marks_series = {}
+    if "Marks" in df_subset.columns:
+        marks_series = df_subset.set_index("QuestionID")["Marks"].to_dict()
 
-# --------------------- 20s Delay and remedial readiness ---------------------
-if st.session_state.get("main_submitted", False) and st.session_state.main_results.get("wrong"):
-    if "remedial_ready" not in st.session_state:
-        # show countdown and message (non-blocking UI shows but this loop will wait; it's acceptable for short delays)
-        placeholder = st.empty()
-        for i in range(REMEDIAL_DELAY_SECONDS, 0, -1):
-            placeholder.info(f"Please check your incorrect answers above. Remedial will load in {i} seconds...")
-            time.sleep(1)
-        placeholder.empty()
-        st.session_state.remedial_ready = True
-
-# --------------------- Remedial (below main) ---------------------
-if st.session_state.get("remedial_ready", False):
-    st.header("Remedial Quiz")
-    wrong_qs = st.session_state.main_results.get("wrong", [])
-    # map main question IDs to remedial items
-    if "MainQuestionID" not in remedial_df.columns:
-        st.info("Remedial sheet needs 'MainQuestionID' column to link remedial items.")
-    else:
-        wrong_ids = [safe_strip(q.get("QuestionID","")) for q in wrong_qs]
-        rem_set = remedial_df[remedial_df["MainQuestionID"].astype(str).str.strip().isin(wrong_ids)].copy()
-        if rem_set.empty:
-            st.info("No remedial questions found for your incorrect answers.")
+    correct_map = df_subset.set_index("QuestionID")["CorrectOption"].to_dict()
+    for qid, chosen in answers.items():
+        correct_ans = as_text(correct_map.get(qid, ""))
+        if as_text(chosen) == correct_ans:
+            # add marks if present, else 1
+            score += int(marks_series.get(qid, 1))
         else:
-            if "remedial_answers" not in st.session_state:
-                st.session_state.remedial_answers = {}
-            with st.form("remedial_form"):
-                for _, r in rem_set.iterrows():
-                    rqid = safe_strip(r.get("RemedialQuestionID",""))
-                    rtext = safe_strip(r.get("QuestionText",""))
-                    rimg = normalize_img_url(r.get("ImageURL",""))
-                    rhint = safe_strip(r.get("Hint",""))  # optional hint column
-                    opts = [safe_strip(r.get("Option_A","")), safe_strip(r.get("Option_B","")),
-                            safe_strip(r.get("Option_C","")), safe_strip(r.get("Option_D",""))]
-                    opts = [o for o in opts if o]
-                    disp_opts = stable_shuffle(opts, seed_base + f"::ROPT::{rqid}") if SHUFFLE_OPTIONS else opts
-                    st.markdown(f"**{rqid} — {rtext}**")
-                    if rimg:
-                        st.image(rimg, use_container_width=True)
-                    if rhint:
-                        with st.expander("💡 Hint"):
-                            st.write(rhint)
-                    prev = st.session_state.remedial_answers.get(rqid, None)
-                    try:
-                        index = disp_opts.index(prev) if prev in disp_opts else 0
-                    except Exception:
-                        index = 0
-                    sel = st.radio("Select your answer:", disp_opts, key=f"rem_{rqid}", index=index)
-                    st.session_state.remedial_answers[rqid] = sel
-                    st.markdown("---")
-                submit_remedial = st.form_submit_button("Submit Remedial")
-            if submit_remedial:
-                rem_total = 0
-                rem_earned = 0
-                for _, r in rem_set.iterrows():
-                    rqid = safe_strip(r.get("RemedialQuestionID",""))
-                    correct = get_correct_value(r)
-                    given = safe_strip(st.session_state.remedial_answers.get(rqid,""))
-                    marks = int(r.get("Marks") or 1)
-                    awarded = marks if (given != "" and given == correct) else 0
-                    rem_total += marks
-                    rem_earned += awarded
-                    append_response_row(datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                        student_id_in, student_row.get("Student_Name",""), tuition_code_in,
-                                        subject, subtopic_id, rqid, given, correct, awarded, "Remedial")
-                st.success(f"✅ Remedial submitted: {rem_earned}/{rem_total}")
-                st.balloons()
-                st.session_state.remedial_done = True
+            wrong.append(qid)
+    return score, wrong
 
-# --------------------- Final combined summary, chart, PDF, Email ---------------------
-if st.session_state.get("main_submitted", False):
-    st.markdown("## Final Summary & Download")
-    main_res = st.session_state.main_results
-    st.write(f"Main: {main_res['earned']}/{main_res['total']}")
-    if st.session_state.get("remedial_done", False):
-        st.write("Remedial: submitted")
-    # Chart
-    fig, ax = plt.subplots(figsize=(4,2))
-    correct_count = main_res['earned']
-    wrong_count = main_res['total'] - main_res['earned']
-    ax.bar(['Correct','Incorrect'], [correct_count, wrong_count], color=['#2ca02c', '#d62728'])
-    ax.set_title("Main Performance")
-    st.pyplot(fig)
+def render_question_review(q_row: pd.Series, selected: str, correct_text: str, section="main"):
+    """Read-only review card for a question, showing correct/incorrect."""
+    q_text = as_text(q_row.get("QuestionText"))
+    img = as_text(q_row.get("ImageURL"))
+    opts = [as_text(q_row.get("Option_A")), as_text(q_row.get("Option_B")),
+            as_text(q_row.get("Option_C")), as_text(q_row.get("Option_D"))]
+    with st.container():
+        st.markdown("---")
+        if valid_image_url(img):
+            render_image_if_any(img)
+        st.markdown(f"**Q:** {q_text}")
+        for opt in opts:
+            if not opt:
+                continue
+            mark = ""
+            if as_text(opt) == as_text(correct_text):
+                mark = " ✅ **Correct**"
+            if as_text(opt) == as_text(selected) and as_text(selected) != as_text(correct_text):
+                mark = " ❌ **Your answer**"
+            st.markdown(f"- {opt}{mark}")
 
-    # Build PDF report (simple)
-    def build_pdf():
-        buf = io.BytesIO()
-        c = canvas.Canvas(buf, pagesize=A4)
-        width, height = A4
-        c.setFont("Helvetica-Bold", 16)
-        c.drawString(40, height - 50, f"Quiz Report — {subject} / {subtopic_id}")
-        c.setFont("Helvetica", 12)
-        c.drawString(40, height - 80, f"Student: {student_row.get('Student_Name','Unknown')} ({student_id_in})")
-        c.drawString(40, height - 100, f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        # embed chart image
-        imgbuf = io.BytesIO()
-        fig.savefig(imgbuf, format='PNG', bbox_inches='tight')
-        imgbuf.seek(0)
-        c.drawImage(ImageReader(imgbuf), 40, height - 350, width=400, preserveAspectRatio=True, mask='auto')
-        y = height - 380
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(40, y, "Main Answers:")
-        y -= 18
+def build_html_report(student_info: dict,
+                      subject: str,
+                      subtopic_id: str,
+                      main_df: pd.DataFrame,
+                      main_answers: dict,
+                      main_score: int,
+                      remedial_df: pd.DataFrame,
+                      remedial_answers: dict,
+                      remedial_score: int) -> str:
+    """Create a simple HTML report that can be downloaded or emailed."""
+    def rows_html(df, answers):
+        html = ""
+        correct_map = df.set_index("QuestionID")["CorrectOption"].to_dict() if "QuestionID" in df.columns else {}
+        for _, r in df.iterrows():
+            qid = as_text(r.get("QuestionID") or r.get("RemedialQuestionID"))
+            qtext = as_text(r.get("QuestionText"))
+            sel = as_text(answers.get(qid, ""))
+            correct = as_text(r.get("CorrectOption"))
+            status = "Correct" if sel == correct else "Incorrect"
+            img = as_text(r.get("ImageURL"))
+            img_html = f'<div><img src="{img}" style="max-width:100%"></div>' if valid_image_url(img) else ""
+            html += f"""
+            <div style="border:1px solid #ddd;border-radius:8px;padding:12px;margin:10px 0;">
+              <div><b>ID:</b> {qid}</div>
+              <div><b>Question:</b> {qtext}</div>
+              {img_html}
+              <div><b>Your Answer:</b> {sel}</div>
+              <div><b>Correct Answer:</b> {correct}</div>
+              <div><b>Status:</b> <span style="color:{'green' if status=='Correct' else 'red'}">{status}</span></div>
+            </div>
+            """
+        return html
+
+    student_block = "".join([f"<div><b>{k}:</b> {as_text(v)}</div>" for k, v in student_info.items()])
+    html = f"""
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Assessment Report</title>
+      <style>
+        body {{ font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; padding: 24px; }}
+        h1,h2 {{ margin-bottom: 6px; }}
+        .score {{ padding: 8px 12px; border-radius: 8px; display: inline-block; }}
+      </style>
+    </head>
+    <body>
+      <h1>Assessment Report</h1>
+      <div><b>Subject:</b> {as_text(subject)}</div>
+      <div><b>Subtopic:</b> {as_text(subtopic_id)}</div>
+      <div><b>Timestamp:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</div>
+      <hr/>
+      <h2>Student</h2>
+      {student_block}
+      <hr/>
+      <h2>Main Quiz</h2>
+      <div class="score" style="background:#e7f7ee;border:1px solid #b8e6cb;">Score: {main_score}</div>
+      {rows_html(main_df, main_answers)}
+      <hr/>
+      <h2>Remedial</h2>
+      <div class="score" style="background:#e7effa;border:1px solid #c5d7f2;">Score: {remedial_score}</div>
+      {rows_html(remedial_df, remedial_answers)}
+      <hr/>
+      <div>Generated by your assessment portal.</div>
+    </body>
+    </html>
+    """
+    return html
+
+def send_report_email(html_report: str, to_emails: list[str]) -> tuple[bool, str]:
+    """Email the HTML report using SMTP creds from secrets."""
+    try:
+        smtp_cfg = st.secrets.get("smtp", {})
+        server = smtp_cfg.get("server")
+        port = int(smtp_cfg.get("port", "587"))
+        username = smtp_cfg.get("username")
+        password = smtp_cfg.get("password")
+        from_email = smtp_cfg.get("from_email", username)
+
+        if not (server and username and password and from_email and to_emails):
+            return False, "SMTP not configured or recipients missing."
+
+        msg = MIMEText(html_report, "html", "utf-8")
+        msg["Subject"] = "Your Assessment Report"
+        msg["From"] = from_email
+        msg["To"] = ", ".join(to_emails)
+
+        context = ssl.create_default_context()
+        with smtplib.SMTP(server, port) as s:
+            s.starttls(context=context)
+            s.login(username, password)
+            s.sendmail(from_email, to_emails, msg.as_string())
+        return True, "Email sent."
+    except Exception as e:
+        return False, f"Failed to send email: {e}"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Query params
+# ──────────────────────────────────────────────────────────────────────────────
+params = st.query_params
+subject = pick_query_param("subject", "")
+subtopic_id = pick_query_param("subtopic_id", "")
+
+if not subject or not subtopic_id:
+    st.error("❌ Missing subject or subtopic_id in URL.")
+    st.stop()
+
+# Map incoming subject/bank names to your secrets keys
+bank_map = {
+    "mathematics": "ssc_maths_geometry",  # default to geometry
+    "maths": "ssc_maths_geometry",
+    "geometry": "ssc_maths_geometry",
+    "algebra": "ssc_maths_algebra",
+    "ssc_maths_algebra": "ssc_maths_algebra",
+    "ssc_maths_geometry": "ssc_maths_geometry",
+    "science": "science_1",  # default
+    "science1": "science_1",
+    "science_1": "science_1",
+    "science2": "science_2",
+    "science_2": "science_2",
+    "ssc_english": "ssc_english",
+}
+
+if subject.lower() in bank_map:
+    bank = bank_map[subject.lower()]
+else:
+    st.error(f"❌ Unknown subject '{subject}'. Please check the URL or mapping.")
+    st.stop()
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Auth & connections
+# ──────────────────────────────────────────────────────────────────────────────
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
+client = gspread.authorize(creds)
+
+# Fetch URLs from secrets.toml
+question_sheets = st.secrets["google"]["question_sheet_urls"]
+response_sheets = st.secrets["google"]["response_sheet_urls"]
+
+QUESTION_SHEET_URL = question_sheets.get(bank)
+RESPONSE_SHEET_URL = response_sheets.get(bank)
+
+if not QUESTION_SHEET_URL:
+    st.error(f"❌ No question sheet URL configured for '{bank}' in secrets.toml.")
+    st.stop()
+
+# Connect to the question sheet
+sheet = client.open_by_url(QUESTION_SHEET_URL)    
+
+@st.cache_data(ttl=60, show_spinner=False)
+def load_worksheets(question_sheet_url: str):
+    sheet = client.open_by_url(question_sheet_url)
+    main_df = pd.DataFrame(sheet.worksheet("Main").get_all_records())
+    remedial_df = pd.DataFrame(sheet.worksheet("Remedial").get_all_records())
+    return main_df, remedial_df
+
+@st.cache_data(ttl=60, show_spinner=False)
+def load_worksheets(question_sheet_url: str):
+    try:
+        sheet = client.open_by_url(question_sheet_url)
+        main_df = pd.DataFrame(sheet.worksheet("Main").get_all_records())
+        remedial_df = pd.DataFrame(sheet.worksheet("Remedial").get_all_records())
+        return main_df, remedial_df
+    except Exception as e:
+        st.error(f"❌ Error loading worksheets: {e}")
+        return pd.DataFrame(), pd.DataFrame()
+
+# ──────────────────────────────────────────────
+# Prepare response sheet (for saving student work)
+# ──────────────────────────────────────────────        
+def get_response_worksheet(response_sheet_url: str):
+    try:
+        rs = client.open_by_url(response_sheet_url)
+        try:
+            ws = rs.worksheet("Responses")
+        except gspread.exceptions.WorksheetNotFound:
+            ws = rs.add_worksheet(title="Responses", rows=1000, cols=30)
+            # Add a header row
+            ws.append_row([
+                "Timestamp", "Subject", "SubtopicID",
+                "StudentName", "Class", "RollNo", "StudentEmail", "ParentEmail",
+                "MainScore", "RemedialScore", "MainWrongIDs", "RemedialWrongIDs"
+            ])
+        return ws
+    except Exception as e:
+        st.warning(f"Could not open response sheet: {e}")
+        return None
+
+try:
+    main_df, remedial_df = load_worksheets(QUESTION_SHEET_URL)
+except gspread.exceptions.WorksheetNotFound as e:
+    st.error(f"❌ Worksheet not found: {e}")
+    st.stop()
+
+# Only this subtopic
+main_questions = main_df[main_df["SubtopicID"] == subtopic_id]
+if main_questions.empty:
+    st.warning("⚠ No questions found for this subtopic.")
+    st.stop()
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Session state init
+# ──────────────────────────────────────────────────────────────────────────────
+ss = st.session_state
+ss.setdefault("student_verified", False)
+ss.setdefault("student_info", {})
+ss.setdefault("main_answers", {})
+ss.setdefault("main_submitted", False)
+ss.setdefault("remedial_unlocked", False)
+ss.setdefault("remedial_countdown_start", None)
+ss.setdefault("remedial_answers", {})
+ss.setdefault("remedial_submitted", False)
+ss.setdefault("main_score", 0)
+ss.setdefault("remedial_score", 0)
+ss.setdefault("main_wrong_ids", [])
+ss.setdefault("remedial_wrong_ids", [])
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 1) Student Verification (with its own submit)
+# ──────────────────────────────────────────────────────────────────────────────
+st.title(f"📄 {subject} — {subtopic_id.replace('_',' ')}")
+
+with st.expander("👤 Student Verification", expanded=not ss["student_verified"]):
+    with st.form("student_verification"):
+        c1, c2, c3 = st.columns([1,1,1])
+        with c1:
+            sv_name = st.text_input("Student Name*", value=as_text(ss["student_info"].get("StudentName")))
+            sv_class = st.text_input("Class/Section*", value=as_text(ss["student_info"].get("Class")))
+        with c2:
+            sv_roll = st.text_input("Roll No*", value=as_text(ss["student_info"].get("RollNo")))
+            sv_student_email = st.text_input("Student Email*", value=as_text(ss["student_info"].get("StudentEmail")))
+        with c3:
+            sv_parent_email = st.text_input("Parent Email*", value=as_text(ss["student_info"].get("ParentEmail")))
+        verify_submit = st.form_submit_button("Submit Verification")
+
+    if verify_submit:
+        required = [sv_name, sv_class, sv_roll, sv_student_email]
+        if any(as_text(x) == "" for x in required):
+            st.error("Please fill all required fields marked with *.")
+        else:
+            ss["student_info"] = {
+                "StudentName": sv_name,
+                "Class": sv_class,
+                "RollNo": sv_roll,
+                "StudentEmail": sv_student_email,
+                "ParentEmail": sv_parent_email,
+            }
+            ss["student_verified"] = True
+            st.success("Verification submitted ✅")
+
+if not ss["student_verified"]:
+    st.stop()
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 2) MAIN QUIZ (Questions required; stays visible after submit; shows review)
+# ──────────────────────────────────────────────────────────────────────────────
+st.header("📝 Main Quiz")
+
+if not ss["main_submitted"]:
+    # Build the form
+    with st.form("main_quiz"):
+        main_answers_local = {}
         for _, q in main_questions.iterrows():
-            qid = safe_strip(q.get("QuestionID",""))
-            qtext = safe_strip(q.get("QuestionText",""))
-            given = safe_strip(st.session_state.main_user_answers.get(qid,""))
-            correct = get_correct_value(q)
-            c.setFont("Helvetica", 10)
-            line = f"{qid}: Your: {given}  |  Correct: {correct}"
-            c.drawString(45, y, line[:90])
-            y -= 12
-            if y < 80:
-                c.showPage()
-                y = height - 50
-        c.showPage()
-        c.save()
-        buf.seek(0)
-        return buf.read()
+            st.markdown("---")
+            render_image_if_any(q.get("ImageURL"))
+            qid = as_text(q["QuestionID"])
+            qtext = as_text(q["QuestionText"])
+            options = [as_text(q.get("Option_A")), as_text(q.get("Option_B")),
+                       as_text(q.get("Option_C")), as_text(q.get("Option_D"))]
+            # Remove empty options
+            options = [o for o in options if o]
 
-    pdf_bytes = build_pdf()
-    st.download_button("📄 Download PDF Report", data=pdf_bytes, file_name=f"report_{student_id_in}_{subtopic_id}.pdf", mime="application/pdf")
+            # radio with no pre-selection -> required
+            ans = st.radio(
+                label=qtext,
+                options=options,
+                index=None,
+                key=f"main_{qid}",
+                horizontal=False
+            )
+            main_answers_local[qid] = ans
 
-    # Email option (requires smtp secrets)
-    smtp_cfg = st.secrets.get("smtp", {})
-    if smtp_cfg:
-        if st.button("📧 Email Report to Student & Parent"):
-            try:
-                msg = EmailMessage()
-                msg["Subject"] = f"Quiz Report: {subject} - {subtopic_id}"
-                msg["From"] = smtp_cfg.get("from_email")
-                to_addrs = []
-                stud_email = student_row.get("Student_Email","")
-                parent_email = student_row.get("Parent_Email","")
-                if stud_email: to_addrs.append(stud_email)
-                if parent_email: to_addrs.append(parent_email)
-                if not to_addrs:
-                    st.error("No student or parent email found in register.")
-                else:
-                    msg["To"] = ", ".join(to_addrs)
-                    msg.set_content("Please find attached your quiz report.")
-                    msg.add_attachment(pdf_bytes, maintype="application", subtype="pdf", filename="report.pdf")
-                    server = smtplib.SMTP(smtp_cfg.get("server"), int(smtp_cfg.get("port",587)))
-                    server.starttls()
-                    server.login(smtp_cfg.get("username"), smtp_cfg.get("password"))
-                    server.send_message(msg)
-                    server.quit()
-                    st.success("Email sent successfully!")
-            except Exception as e:
-                st.error(f"Failed to send email: {e}")
+        submitted = st.form_submit_button("Submit My Answers")
+        if submitted:
+            # Validate all answered
+            missing = require_all_answered(main_answers_local)
+            if missing:
+                st.error("Please answer all questions before submitting.")
+            else:
+                ss["main_answers"] = main_answers_local
+                # Score & wrong IDs
+                score, wrong_ids = calc_score(main_questions, ss["main_answers"])
+                ss["main_score"] = score
+                ss["main_wrong_ids"] = wrong_ids
+                ss["main_submitted"] = True
+                st.success(f"Your main quiz score: {score}")
+                st.balloons()
 
-# --------------------- End ---------------------
+# If submitted, show a review of all main questions with correctness
+if ss["main_submitted"]:
+    st.subheader("Main Quiz Results")
+    correct_map = main_questions.set_index("QuestionID")["CorrectOption"].to_dict()
+    for _, q in main_questions.iterrows():
+        qid = as_text(q["QuestionID"])
+        render_question_review(q, ss["main_answers"].get(qid), correct_map.get(qid), section="main")
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 3) REMEDIAL COUNTDOWN (20s) and REMEDIAL QUIZ
+# ──────────────────────────────────────────────────────────────────────────────
+if ss["main_submitted"] and ss["main_wrong_ids"]:
+    if not ss["remedial_unlocked"]:
+        # Start or update countdown
+        if ss["remedial_countdown_start"] is None:
+            ss["remedial_countdown_start"] = time.time()
+
+        remaining = 20 - int(time.time() - ss["remedial_countdown_start"])
+        if remaining > 0:
+            st.info(
+                f"🔍 Please review your incorrect responses above.\n\n"
+                f"⏳ Remedial quiz will unlock in **{remaining} seconds**."
+            )
+            time.sleep(1)
+            st.rerun()
+        else:
+            ss["remedial_unlocked"] = True
+
+    if ss["remedial_unlocked"]:
+        st.header("🧩 Remedial Quiz")
+        # Pick remedial questions based on wrong main QuestionIDs
+        remedial_to_show = remedial_df[remedial_df["MainQuestionID"].isin(ss["main_wrong_ids"])].copy()
+
+        if remedial_to_show.empty:
+            st.info("No remedial questions mapped for your incorrect answers. Great effort!")
+        else:
+            if not ss["remedial_submitted"]:
+                with st.form("remedial_quiz"):
+                    remedial_answers_local = {}
+                    for _, rq in remedial_to_show.iterrows():
+                        st.markdown("---")
+                        render_image_if_any(rq.get("ImageURL"))
+                        rqid = as_text(rq["RemedialQuestionID"])
+                        qtext = as_text(rq["QuestionText"])
+                        options = [as_text(rq.get("Option_A")), as_text(rq.get("Option_B")),
+                                   as_text(rq.get("Option_C")), as_text(rq.get("Option_D"))]
+                        options = [o for o in options if o]
+
+                        ans = st.radio(
+                            label=qtext,
+                            options=options,
+                            index=None,
+                            key=f"remedial_{rqid}",
+                            horizontal=False
+                        )
+                        remedial_answers_local[rqid] = ans
+
+                        # 💡 Hint box if available
+                        hint_text = as_text(rq.get("Hint"))
+                        if hint_text:
+                            with st.expander("💡 Hint"):
+                                st.write(hint_text)
+
+                    remedial_submit = st.form_submit_button("Submit Remedial Answers")
+                    if remedial_submit:
+                        missing_r = require_all_answered(remedial_answers_local)
+                        if missing_r:
+                            st.error("Please answer all remedial questions before submitting.")
+                        else:
+                            ss["remedial_answers"] = remedial_answers_local
+                            # Score remedial — note key is RemedialQuestionID, so map by that
+                            # Build a df keyed by RemedialQuestionID to reuse calc_score style
+                            tmp = remedial_to_show.rename(columns={"RemedialQuestionID": "QuestionID"})
+                            rscore, rwrong = calc_score(tmp, ss["remedial_answers"])
+                            ss["remedial_score"] = rscore
+                            ss["remedial_wrong_ids"] = rwrong
+                            ss["remedial_submitted"] = True
+                            st.success("Thank you! Your remedial answers were submitted. 🎉")
+            # Always show remedial review once submitted
+            if ss["remedial_submitted"]:
+                st.subheader("Remedial Results")
+                correct_map_r = remedial_to_show.set_index("RemedialQuestionID")["CorrectOption"].to_dict()
+                for _, rq in remedial_to_show.iterrows():
+                    rqid = as_text(rq["RemedialQuestionID"])
+                    # Use same renderer (convert to QuestionID-like shape)
+                    render_question_review(
+                        rq.rename({"RemedialQuestionID": "QuestionID"}),
+                        ss["remedial_answers"].get(rqid),
+                        correct_map_r.get(rqid),
+                        section="remedial"
+                    )
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 4) PERFORMANCE SUMMARY (charts) + DOWNLOAD + EMAIL + VERSIONED SAVE
+# ──────────────────────────────────────────────────────────────────────────────
+if ss["main_submitted"]:
+    st.markdown("---")
+    st.header("📊 Performance Summary")
+
+    # Totals
+    total_main = int(main_questions["Marks"].sum()) if "Marks" in main_questions.columns else len(main_questions)
+    total_remedial = 0
+    if ss["remedial_unlocked"]:
+        # the actual questions shown
+        remedial_to_show = remedial_df[remedial_df["MainQuestionID"].isin(ss["main_wrong_ids"])]
+        total_remedial = int(remedial_to_show["Marks"].sum()) if "Marks" in remedial_to_show.columns else len(remedial_to_show)
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric("Main Score", ss["main_score"], help="Total marks or count of correct answers")
+    with c2:
+        st.metric("Main Incorrect", len(ss["main_wrong_ids"]))
+    with c3:
+        if ss["remedial_unlocked"]:
+            st.metric("Remedial Score", ss["remedial_score"])
+
+    # Simple chart: Correct vs Incorrect (main; remedial if available)
+    main_correct = total_main - len(ss["main_wrong_ids"]) if "Marks" not in main_questions.columns else ss["main_score"]
+    main_points = pd.DataFrame(
+        {"Category": ["Main Correct", "Main Incorrect"],
+         "Count": [main_correct, len(ss["main_wrong_ids"])]}
+    ).set_index("Category")
+    st.bar_chart(main_points)
+
+    if ss["remedial_unlocked"]:
+        remedial_to_show = remedial_df[remedial_df["MainQuestionID"].isin(ss["main_wrong_ids"])]
+        rem_total = len(remedial_to_show) if "Marks" not in remedial_to_show.columns else int(remedial_to_show["Marks"].sum())
+        rem_incorrect = rem_total - ss["remedial_score"]
+        remedial_points = pd.DataFrame(
+            {"Category": ["Remedial Correct", "Remedial Incorrect"],
+             "Count": [ss["remedial_score"], rem_incorrect]}
+        ).set_index("Category")
+        st.bar_chart(remedial_points)
+
+    # Build HTML report (always available after main submit)
+    remedial_to_show = remedial_df[remedial_df["MainQuestionID"].isin(ss["main_wrong_ids"])] if ss["main_wrong_ids"] else remedial_df.iloc[0:0]
+    html_report = build_html_report(
+        student_info=ss["student_info"],
+        subject=subject,
+        subtopic_id=subtopic_id,
+        main_df=main_questions,
+        main_answers=ss["main_answers"],
+        main_score=ss["main_score"],
+        remedial_df=remedial_to_show.rename(columns={"RemedialQuestionID": "QuestionID"}),
+        remedial_answers=ss["remedial_answers"],
+        remedial_score=ss["remedial_score"],
+    )
+
+    # Download button (HTML -> user can Print to PDF)
+    st.download_button(
+        "⬇️ Download Report (HTML)",
+        data=html_report.encode("utf-8"),
+        file_name=f"report_{subject}_{subtopic_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html",
+        mime="text/html",
+    )
+
+    # Email the report
+    with st.expander("✉️ Email this report"):
+        to_student = as_text(ss["student_info"].get("StudentEmail"))
+        to_parent = as_text(ss["student_info"].get("ParentEmail"))
+        default_recipients = ", ".join([x for x in [to_student, to_parent] if x])
+        emails_input = st.text_input("Recipient Emails (comma separated)", value=default_recipients)
+        if st.button("Send Email"):
+            recipients = [as_text(x) for x in emails_input.split(",") if as_text(x)]
+            ok, msg = send_report_email(html_report, recipients)
+            if ok:
+                st.success(msg)
+            else:
+                st.error(msg)
+
+    # Versioned save (progress tracking)
+    ws = get_response_worksheet(RESPONSE_SHEET_URL)
+    if ws is not None:
+        try:
+            ws.append_row([
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                subject, subtopic_id,
+                ss["student_info"].get("StudentName"),
+                ss["student_info"].get("Class"),
+                ss["student_info"].get("RollNo"),
+                ss["student_info"].get("StudentEmail"),
+                ss["student_info"].get("ParentEmail"),
+                ss["main_score"],
+                ss["remedial_score"],
+                ",".join(ss["main_wrong_ids"]),
+                ",".join(ss["remedial_wrong_ids"]),
+            ])
+        except Exception as e:
+            st.warning(f"Could not log response to sheet: {e}")
