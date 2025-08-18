@@ -175,7 +175,7 @@ with st.expander("👤 Student Verification", expanded=not ss.get("student_verif
                 st.success(f"✅ Verified: {student_row['Student_Name']} ({student_row['Tuition_Name']})")
                 ss["student_verified"] = True
                 ss["student_info"] = {
-                    "StudentName": ss["student_info"].get("StudentName",""),
+                    "StudentName": student_row.get("Student_Name", ""),
                     "Class": student_row.get("Class", ""),
                     "RollNo": student_row.get("Roll_No", ""),
                     "StudentEmail": student_row.get("Student_Email", ""),
@@ -383,8 +383,8 @@ if st.session_state.get("remedial_ready", False):
                             str(r.get("Option_D","") or "").strip()]
                     opts = [o for o in opts if o]
                     disp_opts = stable_shuffle(opts, seed_base + f"::ROPT::{rqid}") if True else opts
-                    st.markdown(f"**{rqid}**")    # question number
-                    st.write(qtext)               # question text below
+                    st.markdown(f"**{rqid}**")     # remedial question ID
+                    st.write(rtext)                # remedial question text
                     if rimg:
                         st.image(rimg, use_container_width=True)
                     # hint UI (bulb)
@@ -443,7 +443,8 @@ if st.session_state.get("main_submitted", False):
         c.setFont("Helvetica-Bold", 16)
         c.drawString(40, height - 50, f"Quiz Report: {subject} - {subtopic_id}")
         c.setFont("Helvetica", 12)
-        c.drawString(40, height - 80, f"Student: {student_row.get('Student_Name','Unknown')} ({student_id})")
+        info = ss.get("student_info", {})
+        c.drawString(40, height - 80, f"Student: {info.get('StudentName','Unknown')} ({info.get('Student_ID','')})")
         c.drawString(40, height - 100, f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         # embed chart
         imgbuf = io.BytesIO()
@@ -484,8 +485,9 @@ if st.session_state.get("main_submitted", False):
                 msg["Subject"] = f"Quiz Report: {subject} - {subtopic_id}"
                 msg["From"] = smtp_cfg.get("from_email")
                 to_addrs = []
-                student_email = student_row.get("Student_Email","")
-                parent_email = student_row.get("Parent_Email","")
+                info = ss.get("student_info", {})
+                student_email = info.get("StudentEmail","")
+                parent_email = info.get("ParentEmail","")
                 if student_email: to_addrs.append(student_email)
                 if parent_email: to_addrs.append(parent_email)
                 if not to_addrs:
