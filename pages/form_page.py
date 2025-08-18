@@ -103,6 +103,9 @@ bank_map = {
     "english": "ssc_english",
     "ssc_english": "ssc_english",
 }
+if bank.lower() in bank_map:
+    bank = bank_map[bank.lower()]
+    
 if not subject or not subtopic_id:
     st.error("❌ Missing `subject` or `subtopic_id` in URL.")
     st.stop()
@@ -280,7 +283,8 @@ with st.form("main_quiz"):
         opts = [o for o in opts if o]
         disp_opts = stable_shuffle(opts, seed_base + f"::OPT::{qid}") if True else opts
 
-        st.markdown(f"**{qid} — {qtext}**")
+        st.markdown(f"**{qid}**")
+        st.write(qtext)
         if img:
             st.image(img, use_container_width=True)
         # restore previous selection if exists (index used is last chosen index)
