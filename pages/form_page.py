@@ -18,6 +18,20 @@ import random
 import hashlib
 import requests
 ss = st.session_state
+# ---------- Initialize session_state keys ----------
+if "student_info" not in ss:
+    ss["student_info"] = {}
+if "student_verified" not in ss:
+    ss["student_verified"] = False
+if "main_user_answers" not in ss:
+    ss["main_user_answers"] = {}
+if "main_submitted" not in ss:
+    ss["main_submitted"] = False
+if "main_results" not in ss:
+    ss["main_results"] = {}
+if "remedial_answers" not in ss:
+    ss["remedial_answers"] = {}
+
 
 # ---------- CONFIG / SETUP ----------
 st.set_page_config(page_title="Quiz Form", layout="centered")
