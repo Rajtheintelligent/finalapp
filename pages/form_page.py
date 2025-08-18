@@ -87,11 +87,21 @@ client = gspread.authorize(creds)
 # ---------- SHEET URLS in secrets ----------
 # Put these keys in secrets.toml: google.question_sheet_url and google.response_sheet_url and google.register_sheet_url
 try:
-    question_sheet_url = st.secrets["google"]["question_sheet_url"]
-    response_sheet_url = st.secrets["google"]["response_sheet_url"]
+    question_sheets = st.secrets["google"]["question_sheet_urls"]
+    response_sheets = st.secrets["google"]["response_sheet_urls"]
     register_sheet_url = st.secrets["google"]["register_sheet_url"]
-except Exception:
-    st.error("Please add google.question_sheet_url, google.response_sheet_url, google.register_sheet_url to secrets.toml.")
+
+    if bank not in question_sheets:
+        st.error(f"No question sheet configured for bank '{bank}'. Check secrets.toml.")
+        st.stop()
+    if bank not in response_sheets:
+        st.error(f"No response sheet configured for bank '{bank}'. Check secrets.toml.")
+        st.stop()
+    
+    question_sheet_url = question_sheets[bank]
+    response_sheet_url = response_sheets[bank]
+except Exception as e:
+    st.error(f"Error loading sheet URLs from secrets: {e}")
     st.stop()
 
 # ---------- LOAD REGISTER for student verification ----------
