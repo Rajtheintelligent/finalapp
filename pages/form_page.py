@@ -217,6 +217,7 @@ bank_map = {
     "science_1": "science_1",
     "science2": "science_2",
     "science_2": "science_2",
+    "english": "ssc_english",  
     "ssc_english": "ssc_english",
 }
 
