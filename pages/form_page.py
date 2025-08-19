@@ -648,6 +648,7 @@ if st.session_state.get("main_submitted", False):
         # ---------------------------
         # Optional: Student self-copy
         # ---------------------------
+        # --- PDF Download Section ---
         st.markdown("### 📄 Download Your Report")
         pdf_bytes = build_pdf_bytes()
         info = ss.get("student_info", {})
@@ -657,8 +658,9 @@ if st.session_state.get("main_submitted", False):
             file_name=f"{info.get('StudentName','student')}_report.pdf",
             mime="application/pdf"
         )
-            
-        if st.button("📧 Send Copy to My Email"):
+        
+         # -------------------- Email Copy Section --------------------   
+        with st.expander("📧 Send Copy to My Email"):
             if not student_email:
                 st.error("No student email found in register.")
             else:
