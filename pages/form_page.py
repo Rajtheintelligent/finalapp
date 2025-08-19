@@ -22,6 +22,9 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 
+# ---------- CONFIG / SETUP ----------
+st.set_page_config(page_title="Quiz Form", layout="centered")
+
 ss = st.session_state
 # ---------- Initialize session_state keys ----------
 if "student_info" not in ss:
@@ -38,8 +41,7 @@ if "remedial_answers" not in ss:
     ss["remedial_answers"] = {}
 
 
-# ---------- CONFIG / SETUP ----------
-st.set_page_config(page_title="Quiz Form", layout="centered")
+
 def build_pdf_bytes(score, total, wrong_table):
     """
     Build a simple PDF report and return it as bytes.
@@ -260,6 +262,7 @@ if verify_submit:
 
 if not ss.get("student_verified", False):
     st.stop()
+st.markdown(ANTI_CHEAT_JS, unsafe_allow_html=True)
     
 # -----------------------------
 # Anti-cheat (JS + minimal CSS)
@@ -405,164 +408,164 @@ seed_base = f"{info.get('Student_ID','anon')}::{subtopic_id}"
 # ---------- MAIN QUIZ FORM ----------
 st.header("Main Quiz (Attempt 1)")
 q_rows = list(main_questions.itertuples(index=False))
-# stable shuffle
-q_rows = stable_shuffle(q_rows, seed_base + "::Q") if True else q_rows
+q_rows = stable_shuffle(q_rows, seed_base + "::Q")
 
-# init containers for answers (persist across reruns)
-if "main_user_answers" not in st.session_state:
-    st.session_state.main_user_answers = {}
+ss.setdefault("main_user_answers", {})
+ss.setdefault("main_submitted", False)
+ss.setdefault("main_results", {})
 
-if "main_submitted" not in st.session_state:
-    st.session_state.main_submitted = False
-if "main_results" not in st.session_state:
-    st.session_state.main_results = {}
-
-def all_answered_main(q_rows):
-    for row in q_rows:
-        rowd = row._asdict()
-        qid = str(rowd.get("QuestionID","")).strip()
-        if not st.session_state.main_user_answers.get(qid):
+def _all_answered(qrows):
+    for r in qrows:
+        qid = str(r.QuestionID).strip()
+        if not ss["main_user_answers"].get(qid):
             return False
     return True
 
-with st.form("main_quiz"):
-    for row in q_rows:
-        rowd = row._asdict()
-        qid = str(rowd.get("QuestionID","")).strip()
-        qtext = str(rowd.get("QuestionText","")).strip()
-        img = normalize_img_url(rowd.get("ImageURL",""))
-        # options
-        opts = [str(rowd.get("Option_A","") or "").strip(),
-                str(rowd.get("Option_B","") or "").strip(),
-                str(rowd.get("Option_C","") or "").strip(),
-                str(rowd.get("Option_D","") or "").strip()]
-        opts = [o for o in opts if o]
-        disp_opts = stable_shuffle(opts, seed_base + f"::OPT::{qid}") if True else opts
+if not ss["main_submitted"]:
+    # --- INPUT MODE (before submit) ---
+    with st.form("main_quiz"):
+        for row in q_rows:
+            rowd  = row._asdict()
+            qid   = str(rowd.get("QuestionID","")).strip()
+            qtext = str(rowd.get("QuestionText","")).strip()
+            img   = normalize_img_url(rowd.get("ImageURL",""))
 
-        st.markdown(f"**{qid}**")
-        st.write(qtext)
-        if img:
-            st.image(img, use_container_width=True)
-        # restore previous selection if exists (index used is last chosen index)
-        prev = st.session_state.main_user_answers.get(qid, None)
-        sel = st.radio("Select your answer:", options=disp_opts, key=f"main_{qid}", index=None if prev is None else disp_opts.index(prev))
-        st.session_state.main_user_answers[qid] = sel
-        st.markdown("---")
-    submit_main = st.form_submit_button("Submit Main Quiz")
+            opts = [str(rowd.get("Option_A","") or "").strip(),
+                    str(rowd.get("Option_B","") or "").strip(),
+                    str(rowd.get("Option_C","") or "").strip(),
+                    str(rowd.get("Option_D","") or "").strip()]
+            opts = [o for o in opts if o]
+            disp_opts = stable_shuffle(opts, seed_base + f"::OPT::{qid}")
 
-# Validate & grade main submission
-if submit_main:
-    if not all_answered_main(q_rows):
-        st.error("Please answer all questions before submitting (all questions are compulsory).")
-    else:
-        # grade
-        total = 0
-        earned = 0
-        wrong_rows = []
-        for _, q in main_questions.iterrows():
-            qid = str(q.get("QuestionID","")).strip()
-            correct = get_correct_value(q)
-            given = str(st.session_state.main_user_answers.get(qid,"")).strip()
-            marks = int(q.get("Marks") or 1)
-            total += marks
-            awarded = marks if (given != "" and given == correct) else 0
-            earned += awarded
-            append_response_row(
-                datetime.now().isoformat(),
-                ss["student_info"].get("Student_ID", ""),
-                ss["student_info"].get("StudentName", ""),
-                ss["student_info"].get("Tuition_Code", ""),
-                subject, subtopic_id, qid, given, correct, awarded, "Main"
+            st.markdown(f"**{qid}**. {qtext}")
+            if img:
+                st.image(img, use_container_width=True)
+
+            prev = ss["main_user_answers"].get(qid, None)
+            sel = st.radio(
+                "Select your answer:",
+                options=disp_opts,
+                key=f"main_{qid}",
+                index=disp_opts.index(prev) if prev in disp_opts else None
             )
+            ss["main_user_answers"][qid] = sel
+            st.markdown("---")
 
-            if awarded == 0:
-                wrong_rows.append(q)
-        st.session_state.main_results = {"total": total, "earned": earned, "wrong": wrong_rows}
-        st.session_state.main_submitted = True
-        st.success(f"🎯 Main Score: {earned}/{total}")
+        submit_main = st.form_submit_button("Submit Main Quiz")
 
-# ---------- SHOW MAIN RESULTS (keeps visible) ----------
-if st.session_state.main_submitted:
-    res = st.session_state.main_results
+    if submit_main:
+        if not _all_answered(q_rows):
+            st.error("Please answer all questions before submitting (all are compulsory).")
+        else:
+            total_marks = 0
+            earned_marks = 0
+            wrong_ids = []
+            for _, q in main_questions.iterrows():
+                qid     = str(q.get("QuestionID","")).strip()
+                correct = get_correct_value(q)
+                given   = str(ss["main_user_answers"].get(qid,"")).strip()
+                marks   = int(q.get("Marks") or 1)
+
+                total_marks += marks
+                awarded = marks if (given and given == correct) else 0
+                earned_marks += awarded
+                if awarded == 0:
+                    wrong_ids.append(qid)
+
+                append_response_row(
+                    datetime.now().isoformat(),
+                    ss["student_info"].get("Student_ID", ""),
+                    ss["student_info"].get("StudentName", ""),
+                    ss["student_info"].get("Tuition_Code", ""),
+                    subject, subtopic_id, qid, given, correct, awarded, "Main"
+                )
+
+            ss["main_results"] = {"total": total_marks, "earned": earned_marks, "wrong_ids": wrong_ids}
+            ss["main_submitted"] = True
+            # --- one-time auto email to parent/teachers after successful main submit ---
+ss.setdefault("auto_emailed", False)
+if not ss["auto_emailed"]:
+    try:
+        pdf_bytes = build_pdf_bytes(ss["main_results"]["earned"], ss["main_results"]["total"], [])
+        smtp_cfg = st.secrets.get("smtp", {})
+        msg = EmailMessage()
+        msg["Subject"] = f"Quiz Report: {subject} - {subtopic_id}"
+        msg["From"] = smtp_cfg.get("from_email", smtp_cfg.get("user"))
+        recipients = [
+            ss["student_info"].get("ParentEmail", ""),
+            ss["student_info"].get("TeacherEmail", ""),
+            ss["student_info"].get("HeadTeacherEmail", ""),
+        ]
+        recipients = [r for r in recipients if r]
+        if recipients:
+            msg["To"] = ", ".join(recipients)
+            msg.set_content("Please find attached the quiz report.")
+            msg.add_attachment(pdf_bytes, maintype="application", subtype="pdf", filename="Quiz_Report.pdf")
+            with smtplib.SMTP_SSL(smtp_cfg.get("server"), int(smtp_cfg.get("port", 465))) as s:
+                s.login(smtp_cfg.get("user", smtp_cfg.get("username")), smtp_cfg.get("password"))
+                s.send_message(msg)
+        ss["auto_emailed"] = True
+    except Exception as e:
+        st.warning(f"Auto email failed: {e}")
+
+            st.rerun()  # flip UI to review mode instantly
+
+else:
+    # --- REVIEW MODE (after submit): only highlight the CORRECT option in green ---
+    res = ss["main_results"]
     st.markdown("### Main Quiz Review")
     st.success(f"Score: {res['earned']}/{res['total']}")
 
-    # show review of each question with highlights
     for _, q in main_questions.iterrows():
-        qid = str(q.get("QuestionID","")).strip()
-        qtext = str(q.QuestionText).strip()
-    correct = get_correct_value(q)
-    prev = st.session_state.main_user_answers.get(qid, "")
+        qid     = str(q.get("QuestionID","")).strip()
+        qtext   = str(q.get("QuestionText","")).strip()
+        img     = normalize_img_url(q.get("ImageURL",""))
+        correct = get_correct_value(q)
 
-    if not st.session_state.get("main_submitted", False):
-        # BEFORE SUBMIT → show radios
-        opts = [q.Option_A, q.Option_B, q.Option_C, q.Option_D]
-        opts = [o for o in opts if o]  # remove blanks
-        sel = st.radio(
-            f"**{qid}**. {qtext}",
-            options=opts,
-            key=f"main_{qid}",
-            index=opts.index(prev) if prev in opts else None
-        )
-        st.session_state.main_user_answers[qid] = sel
-    else:
-        # AFTER SUBMIT → show highlights instead of radios
-        given = str(st.session_state.main_user_answers.get(qid, "")).strip()
+        opts = [str(q.get("Option_A","") or "").strip(),
+                str(q.get("Option_B","") or "").strip(),
+                str(q.get("Option_C","") or "").strip(),
+                str(q.get("Option_D","") or "").strip()]
+        opts = [o for o in opts if o]
+        disp_opts = stable_shuffle(opts, seed_base + f"::OPT::{qid}")
+
         st.markdown(f"**{qid}**. {qtext}")
-        for opt in [q.Option_A, q.Option_B, q.Option_C, q.Option_D]:
-            if not opt:
-                continue
-            style = ""
-            if opt == correct:
-                style = "background-color: rgba(0,255,0,0.2); border-radius: 5px;"  # green highlight
-            elif opt == given and opt != correct:
-                style = "background-color: rgba(255,0,0,0.2); border-radius: 5px;"  # red highlight
+        if img:
+            st.image(img, use_container_width=True)
+
+        for opt in disp_opts:
+            style = "background-color: rgba(0,255,0,0.2); border-radius: 5px;" if opt == correct else ""
             st.markdown(f"<div style='{style}; padding:4px;'>{opt}</div>", unsafe_allow_html=True)
-    # still show mistakes in table if you want
-    if res["wrong"]:
-        st.error("You answered these questions incorrectly. See highlights above.")
-    else:
-        st.success("All main answers correct!")
 
-    wrong_table = []
-    if res["wrong"]:
-        st.error("You answered these questions incorrectly. Review below:")
-        for q in res["wrong"]:
-            qid = str(q.get("QuestionID","")).strip()
-            qtext = str(q.get("QuestionText","")).strip()
-            correct = get_correct_value(q)
-            given = str(st.session_state.main_user_answers.get(qid,"")).strip()
-            wrong_table.append({"QuestionID": qid, "QuestionText": qtext, "Your": given, "Correct": correct})
-        st.table(pd.DataFrame(wrong_table))
-    else:
-        st.success("All main answers correct!")
+        st.markdown("---")
 
-    # ---------- Performance Graph ----------
-    st.markdown("### Main Performance Graph")
+    # --- Graph & single Download/Email: only here (after submit) ---
+    total_q = len(main_questions)
+    incorrect_q = len(res["wrong_ids"])
+    correct_q = total_q - incorrect_q
+
     fig, ax = plt.subplots()
-    ax.bar(["Correct", "Incorrect"],
-           [res['earned'], res['total'] - res['earned']],
-           color=["green", "red"])
+    ax.bar(["Correct", "Incorrect"], [correct_q, incorrect_q])
     st.pyplot(fig)
 
-    # ---------- PDF Download ----------
-    pdf_bytes = build_pdf_bytes(res['earned'], res['total'], wrong_table)
+    # Build a simple PDF (reuse your existing function if you’d like)
+    pdf_bytes = build_pdf_bytes(res['earned'], res['total'], [])
     st.download_button(
         "📄 Download PDF Report",
         data=pdf_bytes,
         file_name=f"report_{ss['student_info'].get('Student_ID','')}_{subtopic_id}.pdf",
-        mime="application/pdf"
+        mime="application/pdf",
+        key=f"download_main_{subject}_{subtopic_id}"     # unique key
     )
 
-    # ---------- Email Copy ----------
-    if st.button("📧 Send Copy to My Email"):
+    if st.button("📧 Send Copy to My Email", key=f"email_main_{subject}_{subtopic_id}"):
         student_email = ss.get("student_info", {}).get("StudentEmail", "")
         if not student_email:
             st.error("No student email found in register.")
         else:
             send_report_to_student(student_email, pdf_bytes)
             st.success("📧 Report sent to your email.")
-# ---------- 20s DELAY & REMEDIAL DISPLAY ----------
+# ---------- REMEDIAL (appears only if main had mistakes; flips to review after submit) ----------
 if st.session_state.get("main_submitted", False) and st.session_state.get("main_results", {}).get("wrong"):
     # show message and countdown once
     if "remedial_ready" not in st.session_state:
@@ -574,113 +577,121 @@ if st.session_state.get("main_submitted", False) and st.session_state.get("main_
         st.session_state.remedial_ready = True
 
 # ---------- REMEDIAL (shows below main, main stays visible) ----------
-if st.session_state.get("remedial_ready", False):
+if ss.get("main_submitted", False) and ss.get("main_results", {}).get("wrong_ids"):
+    # 20s info once
+    if "remedial_ready" not in ss:
+        placeholder = st.empty()
+        for i in range(20, 0, -1):
+            placeholder.info(f"Please review your incorrect answers above. Remedial will load in {i} seconds...")
+            time.sleep(1)
+        placeholder.empty()
+        ss["remedial_ready"] = True
+
+if ss.get("remedial_ready", False):
     st.header("Remedial Quiz")
-    wrong_qs = st.session_state.main_results.get("wrong", [])
-    # build remedial set by MainQuestionID mapping
+
+    wrong_ids = ss["main_results"].get("wrong_ids", [])
     if "MainQuestionID" not in remedial_df.columns:
-        st.info("Remedial sheet missing 'MainQuestionID' column. Add it to map remedial items to main questions.")
+        st.info("Remedial sheet missing 'MainQuestionID' column.")
     else:
-        wrong_ids = [str(q.get("QuestionID","")).strip() for q in wrong_qs]
-        rem_set = remedial_df[remedial_df["MainQuestionID"].astype(str).str.strip().isin(wrong_ids)].copy()
+        rem_set = remedial_df[
+            remedial_df["MainQuestionID"].astype(str).str.strip().isin(wrong_ids)
+        ].copy()
+
         if rem_set.empty:
             st.info("No remedial questions found for these misses.")
         else:
-            # prepare session state for remedial answers
-            if "remedial_answers" not in st.session_state:
-                st.session_state.remedial_answers = {}
-            with st.form("remedial_form"):
+            ss.setdefault("remedial_answers", {})
+            ss.setdefault("remedial_submitted", False)
+
+            if not ss["remedial_submitted"]:
+                # INPUT MODE
+                with st.form("remedial_form"):
+                    for _, r in rem_set.iterrows():
+                        rqid  = str(r.get("RemedialQuestionID","")).strip()
+                        rtext = str(r.get("QuestionText","")).strip()
+                        rimg  = normalize_img_url(r.get("ImageURL",""))
+                        rhint = str(r.get("Hint","")).strip()
+
+                        opts = [str(r.get("Option_A","") or "").strip(),
+                                str(r.get("Option_B","") or "").strip(),
+                                str(r.get("Option_C","") or "").strip(),
+                                str(r.get("Option_D","") or "").strip()]
+                        opts = [o for o in opts if o]
+                        disp_opts = stable_shuffle(opts, seed_base + f"::ROPT::{rqid}")
+
+                        st.markdown(f"**{rqid}**. {rtext}")
+                        if rimg:
+                            st.image(rimg, use_container_width=True)
+                        if rhint:
+                            with st.expander("💡 Hint"):
+                                st.write(rhint)
+
+                        prev = ss["remedial_answers"].get(rqid, None)
+                        sel = st.radio(
+                            "Select your answer:",
+                            options=disp_opts,
+                            key=f"rem_{rqid}",
+                            index=disp_opts.index(prev) if prev in disp_opts else None
+                        )
+                        ss["remedial_answers"][rqid] = sel
+                        st.markdown("---")
+
+                    submit_remedial = st.form_submit_button("Submit Remedial")
+
+                if submit_remedial:
+                    # grade & save; note: use rqid here (not qid)
+                    rem_total = 0
+                    rem_earned = 0
+                    for _, r in rem_set.iterrows():
+                        rqid    = str(r.get("RemedialQuestionID","")).strip()
+                        correct = get_correct_value(r)
+                        given   = str(ss["remedial_answers"].get(rqid,"")).strip()
+                        marks   = int(r.get("Marks") or 1)
+                        awarded = marks if (given and given == correct) else 0
+                        rem_total  += marks
+                        rem_earned += awarded
+
+                        append_response_row(
+                            datetime.now().isoformat(),
+                            ss["student_info"].get("Student_ID", ""),
+                            ss["student_info"].get("StudentName", ""),
+                            ss["student_info"].get("Tuition_Code", ""),
+                            subject, subtopic_id, rqid, given, correct, awarded, "Remedial"
+                        )
+
+                    ss["remedial_results"] = {"total": rem_total, "earned": rem_earned}
+                    ss["remedial_submitted"] = True
+                    st.balloons()
+                    st.rerun()
+            else:
+                # REVIEW MODE — green highlight only
+                res = ss["remedial_results"]
+                st.markdown("### Remedial Quiz Review")
+                st.success(f"Score: {res['earned']}/{res['total']}")
+
                 for _, r in rem_set.iterrows():
-                    rqid = str(r.get("RemedialQuestionID","")).strip()
-                    rtext = str(r.get("QuestionText","")).strip()
-                    rimg = normalize_img_url(r.get("ImageURL",""))
-                    rhint = str(r.get("Hint","")).strip()  # hint column in Remedial sheet (optional)
+                    rqid    = str(r.get("RemedialQuestionID","")).strip()
+                    rtext   = str(r.get("QuestionText","")).strip()
+                    rimg    = normalize_img_url(r.get("ImageURL",""))
+                    correct = get_correct_value(r)
+
                     opts = [str(r.get("Option_A","") or "").strip(),
                             str(r.get("Option_B","") or "").strip(),
                             str(r.get("Option_C","") or "").strip(),
                             str(r.get("Option_D","") or "").strip()]
                     opts = [o for o in opts if o]
-                    disp_opts = stable_shuffle(opts, seed_base + f"::ROPT::{rqid}") if True else opts
-                    st.markdown(f"**{rqid}**")     # remedial question ID
-                    st.write(rtext)                # remedial question text
+                    disp_opts = stable_shuffle(opts, seed_base + f"::ROPT::{rqid}")
+
+                    st.markdown(f"**{rqid}**. {rtext}")
                     if rimg:
                         st.image(rimg, use_container_width=True)
-                    # hint UI (bulb)
-                    if rhint:
-                        with st.expander("💡 Hint"):
-                            st.write(rhint)
-                    prev = st.session_state.remedial_answers.get(rqid, None)
-                    sel = st.radio(
-                        "Select your answer:", 
-                        options=disp_opts, 
-                        key=f"rem_{rqid}", 
-                        index=disp_opts.index(prev) if prev in disp_opts else None
-                    )
-                    st.session_state.remedial_answers[rqid] = sel
+
+                    for opt in disp_opts:
+                        style = "background-color: rgba(0,255,0,0.2); border-radius: 5px;" if opt == correct else ""
+                        st.markdown(f"<div style='{style}; padding:4px;'>{opt}</div>", unsafe_allow_html=True)
+
                     st.markdown("---")
-                submit_remedial = st.form_submit_button("Submit Remedial")
-
-            if submit_remedial:
-                # grade remedial
-                rem_total = 0
-                rem_earned = 0
-                for _, r in rem_set.iterrows():
-                    rqid = str(r.get("RemedialQuestionID","")).strip()
-                    correct = get_correct_value(r)
-                    given = str(st.session_state.remedial_answers.get(rqid,"")).strip()
-                    marks = int(r.get("Marks") or 1)
-                    awarded = marks if (given != "" and given == correct) else 0
-                    append_response_row(
-                        datetime.now().isoformat(),
-                        ss["student_info"].get("Student_ID", ""),
-                        ss["student_info"].get("StudentName", ""),
-                        ss["student_info"].get("Tuition_Code", ""),
-                        subject, subtopic_id, qid, given, correct, awarded, "Remedial"
-                    )
-                    rem_total += marks
-                    rem_earned += awarded
-                st.success(f"✅ Remedial submitted: {rem_earned}/{rem_total}")
-                st.balloons()
-                st.session_state.remedial_done = True
-                
-# ---------- SHOW REMEDIAL RESULTS ----------
-if st.session_state.get("remedial_done", False):
-    res = st.session_state.remedial_results
-    st.markdown("### Remedial Quiz Review")
-    st.success(f"Score: {res['earned']}/{res['total']}")
-
-    for _, r in rem_set.iterrows():
-        rqid = str(r.get("RemedialQuestionID","")).strip()
-        qtext = str(r.get("QuestionText","")).strip()
-    correct = get_correct_value(r)
-
-    if not st.session_state.get("remedial_done", False):
-        # BEFORE SUBMIT → show radios
-        opts = [r.get("Option_A",""), r.get("Option_B",""), r.get("Option_C",""), r.get("Option_D","")]
-        opts = [o for o in opts if o]  # clean blanks
-        prev = st.session_state.remedial_answers.get(rqid, None)
-        sel = st.radio(
-            f"**{rqid}**. {qtext}",
-            options=opts,
-            key=f"rem_{rqid}",
-            index=opts.index(prev) if prev in opts else None
-        )
-        st.session_state.remedial_answers[rqid] = sel
-    else:
-        # AFTER SUBMIT → show highlights
-        given = str(st.session_state.remedial_answers.get(rqid,"")).strip()
-        st.markdown(f"**{rqid}**. {qtext}")
-        for opt in [r.get("Option_A",""), r.get("Option_B",""), r.get("Option_C",""), r.get("Option_D","")]:
-            if not opt:
-                continue
-            style = ""
-            if opt == correct:
-                style = "background-color: rgba(0,255,0,0.2); border-radius: 5px;"  # green
-            elif opt == given and opt != correct:
-                style = "background-color: rgba(255,0,0,0.2); border-radius: 5px;"  # red
-            st.markdown(f"<div style='{style}; padding:4px;'>{opt}</div>", unsafe_allow_html=True)
-
-    st.markdown("---")
 
 
 # ---------- FINAL COMBINED SUMMARY / GRAPH / PDF EXPORT / EMAIL ----------
@@ -793,94 +804,3 @@ def build_pdf_bytes():
     doc.build(elements)
     buffer.seek(0)
     return buffer.read()
-
-
-# ==========================================================
-# Use the function output for auto-send + buttons
-# ==========================================================
-pdf_bytes = build_pdf_bytes()
-info = ss.get("student_info", {})
-
-try:
-    smtp_cfg = st.secrets.get("smtp", {})
-    if not smtp_cfg:
-        st.error("SMTP config not found in secrets.toml.")
-    else:
-        # ---------------------------
-        # Auto-send to Parent + Teachers
-        # ---------------------------
-        msg = EmailMessage()
-        msg["Subject"] = f"Quiz Report: {subject} - {subtopic_id}"
-        msg["From"] = smtp_cfg.get("from_email")
-
-        # Collect recipients
-        student_email = info.get("StudentEmail", "")
-        parent_email = info.get("ParentEmail", "")
-        subject_teacher = info.get(f"{subject.title()}_Teacher", "")
-        head_teacher = info.get("Head_Teacher", "")
-
-        to_auto = []
-        if parent_email: to_auto.append(parent_email)
-        if subject_teacher: to_auto.append(subject_teacher)
-        if head_teacher: to_auto.append(head_teacher)
-
-        if not to_auto:
-            st.error("No parent/teacher email found for this student in Register.")
-        else:
-            msg["To"] = ", ".join(to_auto)
-            msg.set_content("Please find attached the quiz report.")
-            msg.add_attachment(
-                pdf_bytes,
-                maintype="application",
-                subtype="pdf",
-                filename="Quiz_Report.pdf"
-            )
-
-            server = smtplib.SMTP(smtp_cfg.get("server"), int(smtp_cfg.get("port",587)))
-            server.starttls()
-            server.login(smtp_cfg.get("username"), smtp_cfg.get("password"))
-            server.send_message(msg)
-            server.quit()
-            st.success("✅ Report sent automatically to Parent + Teacher(s).")
-
-    # ---------------------------
-    # Optional: Student self-copy
-    # ---------------------------
-
-    # --- PDF Download Section ---
-    st.download_button(
-        "📄 Download PDF Report",
-        data=pdf_bytes,
-        file_name=f"report_{info.get('Student_ID','')}_{subtopic_id}.pdf",
-        mime="application/pdf"
-    )
-
-    # --- Email Copy Section ---
-    if st.button("📧 Send Copy to My Email"):
-        student_email = info.get("StudentEmail", "")
-        if not student_email:
-            st.error("No student email found in register.")
-        else:
-            try:
-                msg2 = EmailMessage()
-                msg2["Subject"] = f"Your Quiz Report: {subject} - {subtopic_id}"
-                msg2["From"] = smtp_cfg.get("from_email")
-                msg2["To"] = student_email
-                msg2.set_content("Here is your personal copy of the quiz report.")
-                msg2.add_attachment(
-                    pdf_bytes,
-                    maintype="application",
-                    subtype="pdf",
-                    filename=f"report_{info.get('Student_ID','')}.pdf"
-                )
-                server = smtplib.SMTP(smtp_cfg.get("server"), int(smtp_cfg.get("port",587)))
-                server.starttls()
-                server.login(smtp_cfg.get("username"), smtp_cfg.get("password"))
-                server.send_message(msg2)
-                server.quit()
-                st.success("📧 Report sent to your email.")
-            except Exception as e:
-                st.error(f"Failed to send student copy: {e}")
-
-except Exception as e:
-    st.error(f"Failed to send email: {e}")
