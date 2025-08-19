@@ -438,6 +438,7 @@ if st.session_state.main_submitted:
     res = st.session_state.main_results
     st.markdown("### Main Quiz Review")
     st.success(f"Score: {res['earned']}/{res['total']}")
+
     if res["wrong"]:
         st.error("You answered these questions incorrectly. Review below:")
         # table of mistakes
@@ -452,6 +453,35 @@ if st.session_state.main_submitted:
     else:
         st.success("All main answers correct!")
 
+    # ---------- PERFORMANCE GRAPH + REPORT OPTIONS ----------
+    st.markdown("### Main Performance Graph")
+    fig, ax = plt.subplots()
+    ax.bar(["Correct", "Incorrect"],
+           [res['earned'], res['total'] - res['earned']],
+           color=["green","red"])
+    for i, v in enumerate([res['earned'], res['total'] - res['earned']]):
+        ax.text(i, v + 0.2, str(v), ha="center", fontweight="bold")
+    ax.set_ylabel("Number of Questions")
+    ax.set_title("Main Performance")
+    st.pyplot(fig)
+
+    # --- PDF Download Section ---
+    pdf_bytes = build_pdf_bytes()  # <-- reuse your own PDF builder
+    st.download_button(
+        "📄 Download PDF Report",
+        data=pdf_bytes,
+        file_name=f"report_{ss['student_info'].get('Student_ID','')}_{subtopic_id}.pdf",
+        mime="application/pdf"
+    )
+
+    # --- Email Copy Section ---
+    if st.button("📧 Send Copy to My Email"):
+        student_email = ss.get("student_info", {}).get("StudentEmail", "")
+        if not student_email:
+            st.error("No student email found in register.")
+        else:
+            send_report_to_student(student_email, pdf_bytes)
+            st.success("📧 Report sent to your email.")
 # ---------- 20s DELAY & REMEDIAL DISPLAY ----------
 if st.session_state.get("main_submitted", False) and st.session_state.get("main_results", {}).get("wrong"):
     # show message and countdown once
