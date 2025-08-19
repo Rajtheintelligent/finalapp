@@ -188,7 +188,90 @@ with st.expander("👤 Student Verification", expanded=not ss.get("student_verif
 
 if not ss.get("student_verified", False):
     st.stop()
+    
+# -----------------------------
+# Anti-cheat (JS + minimal CSS)
+# -----------------------------
+ANTI_CHEAT_JS = """
+<script>
+// ===== CONFIG =====
+const UNLOCK_CODE = new URLSearchParams(window.location.search).get('unlock_code');
 
+// ===== Utility: lock screen =====
+function lockQuiz(reason) {
+  if (UNLOCK_CODE) { 
+    localStorage.removeItem('quiz_locked');
+    return; // teacher unlocked
+  }
+  
+  localStorage.setItem('quiz_locked', '1');
+
+  // Disable all inputs/buttons
+  document.querySelectorAll('input, button, select, textarea').forEach(el => el.disabled = true);
+
+  // Overlay
+  let overlay = document.createElement('div');
+  overlay.style.position = 'fixed';
+  overlay.style.top = 0;
+  overlay.style.left = 0;
+  overlay.style.width = '100%';
+  overlay.style.height = '100%';
+  overlay.style.background = 'rgba(0,0,0,0.85)';
+  overlay.style.color = 'white';
+  overlay.style.display = 'flex';
+  overlay.style.flexDirection = 'column';
+  overlay.style.justifyContent = 'center';
+  overlay.style.alignItems = 'center';
+  overlay.style.zIndex = 9999;
+  overlay.innerHTML = `
+    <h2 style="color: red; font-size: 28px;">🚫 Quiz Locked!</h2>
+    <p style="max-width: 80%; text-align: center;">
+      You switched away from the quiz.<br>
+      Please contact your teacher to reopen it.
+    </p>
+  `;
+  document.body.appendChild(overlay);
+
+  // Vibrate on mobile
+  if (navigator.vibrate) {
+    navigator.vibrate([200, 100, 200]);
+  }
+}
+
+// ===== Check lock status on load =====
+if (localStorage.getItem('quiz_locked') && !UNLOCK_CODE) {
+  window.addEventListener('load', () => lockQuiz("already locked"));
+}
+
+// ===== Anti-cheat events =====
+document.addEventListener('contextmenu', event => event.preventDefault());
+document.addEventListener('selectstart', event => event.preventDefault());
+document.addEventListener('copy', event => event.preventDefault());
+document.addEventListener('keydown', function(e) {
+  const k = e.key.toLowerCase();
+  if ((e.ctrlKey || e.metaKey) && ['c','x','p','s','u','a'].includes(k)) {
+    e.preventDefault();
+  }
+});
+
+function triggerCheatLock() {
+  lockQuiz("tab switch");
+}
+
+document.addEventListener("visibilitychange", function() {
+  if (document.hidden) triggerCheatLock();
+});
+window.addEventListener("blur", triggerCheatLock, { passive: true });
+</script>
+
+<style>
+* {
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+</style>
+"""
 
 # ---------- LOAD QUESTIONS ----------
 try:
