@@ -194,9 +194,13 @@ if verify_submit:
                 "RollNo": student_row.get("Roll_No", ""),
                 "StudentEmail": student_row.get("Student_Email", ""),
                 "ParentEmail": student_row.get("Parent_Email", ""),
+                "TeacherEmail": student_row.get("Teacher_Email", ""),
+                "HeadTeacherEmail": student_row.get("Head_Teacher_Email", ""),
+                "ParentTelegramID": student_row.get("Parent_Telegram_ID", ""),
+                "TeacherTelegramID": student_row.get("Teacher_Telegram_ID", ""),
                 "Tuition_Code": tuition_code.strip(),
                 "Student_ID": student_id.strip(),
-                "Password": student_password.strip(),   # ✅ NEW LINE
+                "Password": student_password.strip(),  
             }
         else:
             st.error("❌ Invalid Tuition Code or Student ID. Please try again.")
