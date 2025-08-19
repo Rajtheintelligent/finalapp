@@ -17,12 +17,10 @@ import base64
 import random
 import hashlib
 import requests
-import io
+
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
-from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
-t
 
 ss = st.session_state
 # ---------- Initialize session_state keys ----------
