@@ -490,25 +490,34 @@ if st.session_state.main_submitted:
     # show review of each question with highlights
     for _, q in main_questions.iterrows():
         qid = str(q.get("QuestionID","")).strip()
-        qtext = str(q.get("QuestionText","")).strip()
-        correct = get_correct_value(q)
-        given = str(st.session_state.main_user_answers.get(qid,"")).strip()
+        qtext = str(q.QuestionText).strip()
+    correct = get_correct_value(q)
+    prev = st.session_state.main_user_answers.get(qid, "")
 
+    if not st.session_state.get("main_submitted", False):
+        # BEFORE SUBMIT → show radios
+        opts = [q.Option_A, q.Option_B, q.Option_C, q.Option_D]
+        opts = [o for o in opts if o]  # remove blanks
+        sel = st.radio(
+            f"**{qid}**. {qtext}",
+            options=opts,
+            key=f"main_{qid}",
+            index=opts.index(prev) if prev in opts else None
+        )
+        st.session_state.main_user_answers[qid] = sel
+    else:
+        # AFTER SUBMIT → show highlights instead of radios
+        given = str(st.session_state.main_user_answers.get(qid, "")).strip()
         st.markdown(f"**{qid}**. {qtext}")
-
-        # highlight each option
-        for opt in [q.get("Option_A",""), q.get("Option_B",""), q.get("Option_C",""), q.get("Option_D","")]:
+        for opt in [q.Option_A, q.Option_B, q.Option_C, q.Option_D]:
             if not opt:
                 continue
             style = ""
             if opt == correct:
-                style = "background-color: rgba(0,255,0,0.2); border-radius: 5px;"  # light green
+                style = "background-color: rgba(0,255,0,0.2); border-radius: 5px;"  # green highlight
             elif opt == given and opt != correct:
-                style = "background-color: rgba(255,0,0,0.2); border-radius: 5px;"  # light red
+                style = "background-color: rgba(255,0,0,0.2); border-radius: 5px;"  # red highlight
             st.markdown(f"<div style='{style}; padding:4px;'>{opt}</div>", unsafe_allow_html=True)
-
-        st.markdown("---")
-
     # still show mistakes in table if you want
     if res["wrong"]:
         st.error("You answered these questions incorrectly. See highlights above.")
@@ -643,12 +652,24 @@ if st.session_state.get("remedial_done", False):
     for _, r in rem_set.iterrows():
         rqid = str(r.get("RemedialQuestionID","")).strip()
         qtext = str(r.get("QuestionText","")).strip()
-        correct = get_correct_value(r)
+    correct = get_correct_value(r)
+
+    if not st.session_state.get("remedial_done", False):
+        # BEFORE SUBMIT → show radios
+        opts = [r.get("Option_A",""), r.get("Option_B",""), r.get("Option_C",""), r.get("Option_D","")]
+        opts = [o for o in opts if o]  # clean blanks
+        prev = st.session_state.remedial_answers.get(rqid, None)
+        sel = st.radio(
+            f"**{rqid}**. {qtext}",
+            options=opts,
+            key=f"rem_{rqid}",
+            index=opts.index(prev) if prev in opts else None
+        )
+        st.session_state.remedial_answers[rqid] = sel
+    else:
+        # AFTER SUBMIT → show highlights
         given = str(st.session_state.remedial_answers.get(rqid,"")).strip()
-
         st.markdown(f"**{rqid}**. {qtext}")
-
-        # highlight options
         for opt in [r.get("Option_A",""), r.get("Option_B",""), r.get("Option_C",""), r.get("Option_D","")]:
             if not opt:
                 continue
@@ -659,7 +680,7 @@ if st.session_state.get("remedial_done", False):
                 style = "background-color: rgba(255,0,0,0.2); border-radius: 5px;"  # red
             st.markdown(f"<div style='{style}; padding:4px;'>{opt}</div>", unsafe_allow_html=True)
 
-        st.markdown("---")
+    st.markdown("---")
 
 
 # ---------- FINAL COMBINED SUMMARY / GRAPH / PDF EXPORT / EMAIL ----------
