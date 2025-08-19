@@ -541,13 +541,12 @@ if st.session_state.get("main_submitted", False):
     fig, ax = plt.subplots(figsize=(4,2))
     correct_count = main_res['earned']
     wrong_count = main_res['total'] - main_res['earned']
-    ax.bar(['Correct','Incorrect'], [correct_count, wrong_count],
-           color=['blue','red'])
-   ax.set_title("Main Performance")
-   ax.set_ylim(0, max(correct_count, wrong_count) + 1)
-   ax.set_yticks(range(0, max(correct_count, wrong_count) + 2))
-   ax.set_ylabel("Number of Questions")
-   st.pyplot(fig)
+    ax.bar(['Correct','Incorrect'], [correct_count, wrong_count], color=['blue','red'])
+    ax.set_title("Main Performance")
+    ax.set_ylim(0, max(correct_count, wrong_count) + 1)
+    ax.set_yticks(range(0, max(correct_count, wrong_count) + 2))
+    ax.set_ylabel("Number of Questions")
+    st.pyplot(fig)
 
     # Build PDF bytes (reportlab + embed plt as image)
     def build_pdf_bytes():
