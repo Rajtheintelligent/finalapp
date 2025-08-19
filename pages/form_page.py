@@ -487,6 +487,34 @@ if st.session_state.main_submitted:
     st.markdown("### Main Quiz Review")
     st.success(f"Score: {res['earned']}/{res['total']}")
 
+    # show review of each question with highlights
+    for _, q in main_questions.iterrows():
+        qid = str(q.get("QuestionID","")).strip()
+        qtext = str(q.get("QuestionText","")).strip()
+        correct = get_correct_value(q)
+        given = str(st.session_state.main_user_answers.get(qid,"")).strip()
+
+        st.markdown(f"**{qid}**. {qtext}")
+
+        # highlight each option
+        for opt in [q.get("Option_A",""), q.get("Option_B",""), q.get("Option_C",""), q.get("Option_D","")]:
+            if not opt:
+                continue
+            style = ""
+            if opt == correct:
+                style = "background-color: rgba(0,255,0,0.2); border-radius: 5px;"  # light green
+            elif opt == given and opt != correct:
+                style = "background-color: rgba(255,0,0,0.2); border-radius: 5px;"  # light red
+            st.markdown(f"<div style='{style}; padding:4px;'>{opt}</div>", unsafe_allow_html=True)
+
+        st.markdown("---")
+
+    # still show mistakes in table if you want
+    if res["wrong"]:
+        st.error("You answered these questions incorrectly. See highlights above.")
+    else:
+        st.success("All main answers correct!")
+
     wrong_table = []
     if res["wrong"]:
         st.error("You answered these questions incorrectly. Review below:")
@@ -573,7 +601,12 @@ if st.session_state.get("remedial_ready", False):
                         with st.expander("💡 Hint"):
                             st.write(rhint)
                     prev = st.session_state.remedial_answers.get(rqid, None)
-                    sel = st.radio("Select your answer:", options=disp_opts, key=f"rem_{rqid}", index=0 if prev is None else disp_opts.index(prev))
+                    sel = st.radio(
+                        "Select your answer:", 
+                        options=disp_opts, 
+                        key=f"rem_{rqid}", 
+                        index=disp_opts.index(prev) if prev in disp_opts else None
+                    )
                     st.session_state.remedial_answers[rqid] = sel
                     st.markdown("---")
                 submit_remedial = st.form_submit_button("Submit Remedial")
@@ -600,6 +633,34 @@ if st.session_state.get("remedial_ready", False):
                 st.success(f"✅ Remedial submitted: {rem_earned}/{rem_total}")
                 st.balloons()
                 st.session_state.remedial_done = True
+                
+# ---------- SHOW REMEDIAL RESULTS ----------
+if st.session_state.get("remedial_done", False):
+    res = st.session_state.remedial_results
+    st.markdown("### Remedial Quiz Review")
+    st.success(f"Score: {res['earned']}/{res['total']}")
+
+    for _, r in rem_set.iterrows():
+        rqid = str(r.get("RemedialQuestionID","")).strip()
+        qtext = str(r.get("QuestionText","")).strip()
+        correct = get_correct_value(r)
+        given = str(st.session_state.remedial_answers.get(rqid,"")).strip()
+
+        st.markdown(f"**{rqid}**. {qtext}")
+
+        # highlight options
+        for opt in [r.get("Option_A",""), r.get("Option_B",""), r.get("Option_C",""), r.get("Option_D","")]:
+            if not opt:
+                continue
+            style = ""
+            if opt == correct:
+                style = "background-color: rgba(0,255,0,0.2); border-radius: 5px;"  # green
+            elif opt == given and opt != correct:
+                style = "background-color: rgba(255,0,0,0.2); border-radius: 5px;"  # red
+            st.markdown(f"<div style='{style}; padding:4px;'>{opt}</div>", unsafe_allow_html=True)
+
+        st.markdown("---")
+
 
 # ---------- FINAL COMBINED SUMMARY / GRAPH / PDF EXPORT / EMAIL ----------
 # Compute counts as questions (cleaner for the chart)
