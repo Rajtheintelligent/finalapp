@@ -640,70 +640,69 @@ def build_pdf_bytes():
     return buffer.read()
 
 
-    pdf_bytes = build_pdf_bytes()
-    info = ss.get("student_info", {})
+# ==========================================================
+# Use the function output for auto-send + buttons
+# ==========================================================
+pdf_bytes = build_pdf_bytes()
+info = ss.get("student_info", {})
 
-    try:
-        smtp_cfg = st.secrets.get("smtp", {})
-        if not smtp_cfg:
-            st.error("SMTP config not found in secrets.toml.")
+try:
+    smtp_cfg = st.secrets.get("smtp", {})
+    if not smtp_cfg:
+        st.error("SMTP config not found in secrets.toml.")
+    else:
+        # ---------------------------
+        # Auto-send to Parent + Teachers
+        # ---------------------------
+        msg = EmailMessage()
+        msg["Subject"] = f"Quiz Report: {subject} - {subtopic_id}"
+        msg["From"] = smtp_cfg.get("from_email")
+
+        # Collect recipients
+        student_email = info.get("StudentEmail", "")
+        parent_email = info.get("ParentEmail", "")
+        subject_teacher = info.get(f"{subject.title()}_Teacher", "")
+        head_teacher = info.get("Head_Teacher", "")
+
+        to_auto = []
+        if parent_email: to_auto.append(parent_email)
+        if subject_teacher: to_auto.append(subject_teacher)
+        if head_teacher: to_auto.append(head_teacher)
+
+        if not to_auto:
+            st.error("No parent/teacher email found for this student in Register.")
         else:
-            # ---------------------------
-            # Auto-send to Parent + Teachers
-            # ---------------------------
-            msg = EmailMessage()
-            msg["Subject"] = f"Quiz Report: {subject} - {subtopic_id}"
-            msg["From"] = smtp_cfg.get("from_email")
+            msg["To"] = ", ".join(to_auto)
+            msg.set_content("Please find attached the quiz report.")
+            msg.add_attachment(
+                pdf_bytes,
+                maintype="application",
+                subtype="pdf",
+                filename="Quiz_Report.pdf"
+            )
 
-            # Collect recipients
-            student_email = info.get("StudentEmail", "")
-            parent_email = info.get("ParentEmail", "")
-            subject_teacher = info.get(f"{subject.title()}_Teacher", "")
-            head_teacher = info.get("Head_Teacher", "")
+            server = smtplib.SMTP(smtp_cfg.get("server"), int(smtp_cfg.get("port",587)))
+            server.starttls()
+            server.login(smtp_cfg.get("username"), smtp_cfg.get("password"))
+            server.send_message(msg)
+            server.quit()
+            st.success("✅ Report sent automatically to Parent + Teacher(s).")
 
-            to_auto = []
-            if parent_email: to_auto.append(parent_email)
-            if subject_teacher: to_auto.append(subject_teacher)
-            if head_teacher: to_auto.append(head_teacher)
+    # ---------------------------
+    # Optional: Student self-copy
+    # ---------------------------
 
-            if not to_auto:
-                st.error("No parent/teacher email found for this student in Register.")
-            else:
-                msg["To"] = ", ".join(to_auto)
-                msg.set_content("Please find attached the quiz report.")
-                msg.add_attachment(
-                    pdf_bytes,
-                    maintype="application",
-                    subtype="pdf",
-                    filename="Quiz_Report.pdf"
-                )
-
-                server = smtplib.SMTP(smtp_cfg.get("server"), int(smtp_cfg.get("port",587)))
-                server.starttls()
-                server.login(smtp_cfg.get("username"), smtp_cfg.get("password"))
-                server.send_message(msg)
-                server.quit()
-                st.success("✅ Report sent automatically to Parent + Teacher(s).")
-
-        # ---------------------------
-        # Optional: Student self-copy
-        # ---------------------------
-        # --- PDF Download Section ---
-    pdf_bytes = build_pdf_bytes()
-    info = ss.get("student_info", {})
-        
+    # --- PDF Download Section ---
     st.download_button(
         "📄 Download PDF Report",
         data=pdf_bytes,
         file_name=f"report_{info.get('Student_ID','')}_{subtopic_id}.pdf",
         mime="application/pdf"
     )
-        
-         # -------------------- Email Copy Section --------------------   
+
+    # --- Email Copy Section ---
     if st.button("📧 Send Copy to My Email"):
-        smtp_cfg = st.secrets.get("smtp", {})
         student_email = info.get("StudentEmail", "")
-            
         if not student_email:
             st.error("No student email found in register.")
         else:
@@ -728,5 +727,5 @@ def build_pdf_bytes():
             except Exception as e:
                 st.error(f"Failed to send student copy: {e}")
 
-    except Exception as e:
-        st.error(f"Failed to send email: {e}")
+except Exception as e:
+    st.error(f"Failed to send email: {e}")
