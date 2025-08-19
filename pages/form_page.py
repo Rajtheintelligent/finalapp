@@ -17,7 +17,7 @@ import base64
 import random
 import hashlib
 import requests
-
+from matplotlib.ticker import MaxNLocator
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
@@ -529,22 +529,63 @@ if st.session_state.get("remedial_ready", False):
                 st.session_state.remedial_done = True
 
 # ---------- FINAL COMBINED SUMMARY / GRAPH / PDF EXPORT / EMAIL ----------
-if st.session_state.get("main_submitted", False):
-    st.markdown("## Final Summary & Download")
-    main_res = st.session_state.main_results
-    st.write(f"Main: {main_res['earned']}/{main_res['total']}")
-    if st.session_state.get("remedial_done", False):
-        st.write("Remedial: submitted")
-    # simple graph: main correct vs wrong
-    fig, ax = plt.subplots(figsize=(4,2))
-    correct_count = main_res['earned']
-    wrong_count = main_res['total'] - main_res['earned']
-    ax.bar(['Correct','Incorrect'], [correct_count, wrong_count], color=['blue','red'])
-    ax.set_title("Main Performance")
-    ax.set_ylim(0, max(correct_count, wrong_count) + 1)
-    ax.set_yticks(range(0, max(correct_count, wrong_count) + 2))
-    ax.set_ylabel("Number of Questions")
-    st.pyplot(fig)
+# Compute counts as questions (cleaner for the chart)
+total_q = len(main_questions)
+correct_count = total_q - len(st.session_state.main_results.get("wrong", []))
+wrong_count = total_q - correct_count
+
+# Streamlit theme colors (with sensible fallbacks)
+base   = st.get_option("theme.base") or "light"
+primary = st.get_option("theme.primaryColor") or "#4CAF50"      # for "Correct"
+text    = st.get_option("theme.textColor") or ("#31333F" if base == "light" else "#FAFAFA")
+bg      = st.get_option("theme.backgroundColor") or ("#FFFFFF" if base == "light" else "#0E1117")
+sbg     = st.get_option("theme.secondaryBackgroundColor") or ("#F5F5F5" if base == "light" else "#262730")
+error   = "#E53935" if base == "light" else "#FF6B6B"           # for "Incorrect"
+
+# Figure
+fig, ax = plt.subplots(figsize=(6, 3.4), constrained_layout=True)
+fig.patch.set_facecolor(bg)
+ax.set_facecolor(sbg)
+
+labels = ["Correct", "Incorrect"]
+values = [correct_count, wrong_count]
+bars = ax.bar(labels, values, color=[primary, error], edgecolor=text, linewidth=0.5)
+
+# Neat y-scale with integer ticks and a little headroom
+ymax = max(values + [1])
+ax.set_ylim(0, ymax + max(1, int(0.15 * ymax)))
+ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+ax.grid(axis="y", linestyle="--", linewidth=0.8, alpha=0.25)
+
+# Titles/labels styled to match theme
+ax.set_title("Main Performance", color=text, fontsize=14, pad=8)
+ax.set_ylabel("Questions", color=text)
+
+# Ticks & spines
+ax.tick_params(axis="x", colors=text)
+ax.tick_params(axis="y", colors=text)
+for spine in ["top", "right"]:
+    ax.spines[spine].set_visible(False)
+for spine in ["left", "bottom"]:
+    ax.spines[spine].set_color(text)
+    ax.spines[spine].set_alpha(0.3)
+
+# Value labels on bars
+for r in bars:
+    h = r.get_height()
+    ax.annotate(
+        f"{int(h)}",
+        xy=(r.get_x() + r.get_width() / 2, h),
+        xytext=(0, 4),
+        textcoords="offset points",
+        ha="center",
+        va="bottom",
+        color=text,
+        fontsize=10,
+    )
+
+st.pyplot(fig)
+
 
     # Build PDF bytes (reportlab + embed plt as image)
     def build_pdf_bytes():
@@ -552,7 +593,6 @@ if st.session_state.get("main_submitted", False):
         doc = SimpleDocTemplate(buffer, pagesize=A4)
         elements = []
         styles = getSampleStyleSheet()
-        ...
         doc.build(elements)
         buffer.seek(0)
         return buffer.read()
@@ -632,7 +672,7 @@ if st.session_state.get("main_submitted", False):
                     pdf_bytes,
                     maintype="application",
                     subtype="pdf",
-                    filename=f"report_{info.get('Student_ID','')}.pdf"
+                    filename="Quiz_Report.pdf"
                 )
 
                 server = smtplib.SMTP(smtp_cfg.get("server"), int(smtp_cfg.get("port",587)))
@@ -646,18 +686,17 @@ if st.session_state.get("main_submitted", False):
         # Optional: Student self-copy
         # ---------------------------
         # --- PDF Download Section ---
-        st.markdown("### 📄 Download Your Report")
-        pdf_bytes = build_pdf_bytes()
-        info = ss.get("student_info", {})
+        pdf_bytes = create_pdf_report(...)  # returns bytes
         st.download_button(
             label="⬇️ Download PDF Report",
             data=pdf_bytes,
-            file_name=f"{info.get('StudentName','student')}_report.pdf",
+            file_name="Quiz_Report.pdf",
             mime="application/pdf"
         )
         
          # -------------------- Email Copy Section --------------------   
-        with st.expander("📧 Send Copy to My Email"):
+        if st.button("📧 Send Copy to My Email"):
+            send_email_function()  # your function to send mail
             if not student_email:
                 st.error("No student email found in register.")
             else:
