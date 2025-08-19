@@ -40,6 +40,54 @@ if "remedial_answers" not in ss:
 
 # ---------- CONFIG / SETUP ----------
 st.set_page_config(page_title="Quiz Form", layout="centered")
+def build_pdf_bytes(score, total, wrong_table):
+    """
+    Build a simple PDF report and return it as bytes.
+    """
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(100, height - 50, "Quiz Report")
+
+    c.setFont("Helvetica", 12)
+    c.drawString(100, height - 100, f"Score: {score}/{total}")
+
+    if wrong_table:
+        c.drawString(100, height - 130, "Incorrect Answers:")
+        y = height - 150
+        for row in wrong_table:
+            qid = row.get("QuestionID", "")
+            qtext = row.get("QuestionText", "")[:60]  # trim
+            corr = row.get("Correct", "")
+            given = row.get("Your", "")
+            c.drawString(100, y, f"{qid}: {qtext} | Your: {given} | Correct: {corr}")
+            y -= 20
+
+    c.showPage()
+    c.save()
+    buffer.seek(0)
+    return buffer.getvalue()
+def send_report_to_student(to_email, pdf_bytes):
+    """
+    Send quiz report to student via email.
+    """
+    msg = EmailMessage()
+    msg["Subject"] = "Your Quiz Report"
+    msg["From"] = "noreply@myschool.com"
+    msg["To"] = to_email
+    msg.set_content("Attached is your quiz performance report.")
+
+    msg.add_attachment(pdf_bytes, maintype="application", subtype="pdf", filename="quiz_report.pdf")
+
+    # Uses st.secrets["smtp"] values
+    smtp_cfg = st.secrets.get("smtp", {})
+    with smtplib.SMTP_SSL(smtp_cfg.get("server"), smtp_cfg.get("port")) as server:
+        server.login(smtp_cfg.get("user"), smtp_cfg.get("password"))
+        server.send_message(msg)
+
+
 
 # --- Helpful utilities (small, robust) ---
 def get_params():
@@ -439,34 +487,29 @@ if st.session_state.main_submitted:
     st.markdown("### Main Quiz Review")
     st.success(f"Score: {res['earned']}/{res['total']}")
 
+    wrong_table = []
     if res["wrong"]:
         st.error("You answered these questions incorrectly. Review below:")
-        # table of mistakes
-        table = []
         for q in res["wrong"]:
             qid = str(q.get("QuestionID","")).strip()
             qtext = str(q.get("QuestionText","")).strip()
             correct = get_correct_value(q)
             given = str(st.session_state.main_user_answers.get(qid,"")).strip()
-            table.append({"QuestionID": qid, "Question": qtext, "Your": given, "Correct": correct})
-        st.table(pd.DataFrame(table))
+            wrong_table.append({"QuestionID": qid, "QuestionText": qtext, "Your": given, "Correct": correct})
+        st.table(pd.DataFrame(wrong_table))
     else:
         st.success("All main answers correct!")
 
-    # ---------- PERFORMANCE GRAPH + REPORT OPTIONS ----------
+    # ---------- Performance Graph ----------
     st.markdown("### Main Performance Graph")
     fig, ax = plt.subplots()
     ax.bar(["Correct", "Incorrect"],
            [res['earned'], res['total'] - res['earned']],
-           color=["green","red"])
-    for i, v in enumerate([res['earned'], res['total'] - res['earned']]):
-        ax.text(i, v + 0.2, str(v), ha="center", fontweight="bold")
-    ax.set_ylabel("Number of Questions")
-    ax.set_title("Main Performance")
+           color=["green", "red"])
     st.pyplot(fig)
 
-    # --- PDF Download Section ---
-    pdf_bytes = build_pdf_bytes()  # <-- reuse your own PDF builder
+    # ---------- PDF Download ----------
+    pdf_bytes = build_pdf_bytes(res['earned'], res['total'], wrong_table)
     st.download_button(
         "📄 Download PDF Report",
         data=pdf_bytes,
@@ -474,7 +517,7 @@ if st.session_state.main_submitted:
         mime="application/pdf"
     )
 
-    # --- Email Copy Section ---
+    # ---------- Email Copy ----------
     if st.button("📧 Send Copy to My Email"):
         student_email = ss.get("student_info", {}).get("StudentEmail", "")
         if not student_email:
