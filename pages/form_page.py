@@ -690,16 +690,20 @@ def build_pdf_bytes():
         # ---------------------------
         # --- PDF Download Section ---
         pdf_bytes = build_pdf_bytes()
+        info = ss.get("student_info", {})
+        
         st.download_button(
             "📄 Download PDF Report",
             data=pdf_bytes,
-            file_name=f"report_{student_id}_{subtopic_id}.pdf",
+            file_name=f"report_{info.get('Student_ID','')}_{subtopic_id}.pdf",
             mime="application/pdf"
         )
         
          # -------------------- Email Copy Section --------------------   
         if st.button("📧 Send Copy to My Email"):
-            send_email_function()  # your function to send mail
+            smtp_cfg = st.secrets.get("smtp", {})
+            student_email = info.get("StudentEmail", "")
+            
             if not student_email:
                 st.error("No student email found in register.")
             else:
