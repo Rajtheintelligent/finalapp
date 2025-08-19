@@ -689,11 +689,11 @@ def build_pdf_bytes():
         # Optional: Student self-copy
         # ---------------------------
         # --- PDF Download Section ---
-        pdf_bytes = create_pdf_report(...)  # returns bytes
+        pdf_bytes = build_pdf_bytes()
         st.download_button(
-            label="⬇️ Download PDF Report",
+            "📄 Download PDF Report",
             data=pdf_bytes,
-            file_name="Quiz_Report.pdf",
+            file_name=f"report_{student_id}_{subtopic_id}.pdf",
             mime="application/pdf"
         )
         
