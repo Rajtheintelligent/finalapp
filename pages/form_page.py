@@ -530,58 +530,63 @@ if st.session_state.get("remedial_ready", False):
 
 # ---------- FINAL COMBINED SUMMARY / GRAPH / PDF EXPORT / EMAIL ----------
 # Compute counts as questions (cleaner for the chart)
+from matplotlib.ticker import MaxNLocator
+
+# --- Data ---
 total_q = len(main_questions)
 correct_count = total_q - len(st.session_state.main_results.get("wrong", []))
 wrong_count = total_q - correct_count
 
-# Streamlit theme colors (with sensible fallbacks)
+# --- Theme-aware colors ---
 base   = st.get_option("theme.base") or "light"
-primary = st.get_option("theme.primaryColor") or "#4CAF50"      # for "Correct"
+primary = st.get_option("theme.primaryColor") or "#4CAF50"
 text    = st.get_option("theme.textColor") or ("#31333F" if base == "light" else "#FAFAFA")
 bg      = st.get_option("theme.backgroundColor") or ("#FFFFFF" if base == "light" else "#0E1117")
 sbg     = st.get_option("theme.secondaryBackgroundColor") or ("#F5F5F5" if base == "light" else "#262730")
-error   = "#E53935" if base == "light" else "#FF6B6B"           # for "Incorrect"
+error   = "#E53935" if base == "light" else "#FF6B6B"
 
-# Figure
-fig, ax = plt.subplots(figsize=(6, 3.4), constrained_layout=True)
+# --- Figure ---
+fig, ax = plt.subplots(figsize=(6, 3.6), constrained_layout=True)
 fig.patch.set_facecolor(bg)
 ax.set_facecolor(sbg)
 
 labels = ["Correct", "Incorrect"]
 values = [correct_count, wrong_count]
-bars = ax.bar(labels, values, color=[primary, error], edgecolor=text, linewidth=0.5)
+bars = ax.bar(labels, values, color=[primary, error], edgecolor=text, linewidth=0.6)
 
-# Neat y-scale with integer ticks and a little headroom
+# --- Y-axis scaling ---
 ymax = max(values + [1])
-ax.set_ylim(0, ymax + max(1, int(0.15 * ymax)))
-ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-ax.grid(axis="y", linestyle="--", linewidth=0.8, alpha=0.25)
+ax.set_ylim(0, ymax + 1)   # always at least one unit of breathing space
+ax.yaxis.set_major_locator(MaxNLocator(nbins=6, integer=True))  # ≤6 neat ticks
+ax.grid(axis="y", linestyle="--", linewidth=0.7, alpha=0.3)
 
-# Titles/labels styled to match theme
-ax.set_title("Main Performance", color=text, fontsize=14, pad=8)
-ax.set_ylabel("Questions", color=text)
+# --- Labels & Title ---
+ax.set_title("Main Performance", color=text, fontsize=14, weight="bold", pad=10)
+ax.set_ylabel("Number of Questions", color=text, fontsize=11)
 
-# Ticks & spines
-ax.tick_params(axis="x", colors=text)
-ax.tick_params(axis="y", colors=text)
+ax.tick_params(axis="x", colors=text, labelsize=11)
+ax.tick_params(axis="y", colors=text, labelsize=10)
+
+# Clean up spines
 for spine in ["top", "right"]:
     ax.spines[spine].set_visible(False)
 for spine in ["left", "bottom"]:
     ax.spines[spine].set_color(text)
-    ax.spines[spine].set_alpha(0.3)
+    ax.spines[spine].set_alpha(0.25)
 
-# Value labels on bars
+# --- Value labels on bars ---
 for r in bars:
     h = r.get_height()
     ax.annotate(
         f"{int(h)}",
         xy=(r.get_x() + r.get_width() / 2, h),
-        xytext=(0, 4),
+        xytext=(0, 5),
         textcoords="offset points",
         ha="center",
         va="bottom",
         color=text,
-        fontsize=10,
+        fontsize=11,
+        weight="bold"
     )
 
 st.pyplot(fig)
