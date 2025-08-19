@@ -244,7 +244,8 @@ def append_response_row(timestamp, student_id_v, student_name, tuition_code_v,
 st.title(f"📄 {subject.title()} — {subtopic_id.replace('_',' ')}")
 
 # ---------- SEEDS for stable shuffling ----------
-seed_base = f"{student_id or 'anon'}::{subtopic_id}"
+info = ss.get("student_info", {})
+seed_base = f"{info.get('Student_ID','anon')}::{subtopic_id}"
 
 # ---------- MAIN QUIZ FORM ----------
 st.header("Main Quiz (Attempt 1)")
@@ -472,7 +473,10 @@ if st.session_state.get("main_submitted", False):
         return buffer.read()
 
     pdf_bytes = build_pdf_bytes()
-    st.download_button("📄 Download PDF Report", data=pdf_bytes, file_name=f"report_{student_id}_{subtopic_id}.pdf", mime="application/pdf")
+    info = ss.get("student_info", {})
+    st.download_button("📄 Download PDF Report", data=pdf_bytes,
+                       file_name=f"report_{info.get('Student_ID','')}_{subtopic_id}.pdf", 
+                       mime="application/pdf")
 
     # EMAIL option (optional): requires SMTP in secrets
     if st.button("📧 Email Report to Parent & Student"):
