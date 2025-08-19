@@ -184,22 +184,22 @@ if verify_submit:
             (register_df["Password"].astype(str).str.strip() == student_password.strip())
         )
 
-            if mask.any():
-                student_row = register_df[mask].iloc[0]
-                st.success(f"✅ Verified: {student_row['Student_Name']} ({student_row['Tuition_Name']})")
-                ss["student_verified"] = True
-                ss["student_info"] = {
-                    "StudentName": student_row.get("Student_Name", ""),
-                    "Class": student_row.get("Class", ""),
-                    "RollNo": student_row.get("Roll_No", ""),
-                    "StudentEmail": student_row.get("Student_Email", ""),
-                    "ParentEmail": student_row.get("Parent_Email", ""),
-                    "Tuition_Code": tuition_code.strip(),
-                    "Student_ID": student_id.strip(),
-                    "Password": student_password.strip(),   # ✅ NEW LINE
-                }
-            else:
-                st.error("❌ Invalid Tuition Code or Student ID. Please try again.")
+        if mask.any():
+            student_row = register_df[mask].iloc[0]
+            st.success(f"✅ Verified: {student_row['Student_Name']} ({student_row['Tuition_Name']})")
+            ss["student_verified"] = True
+            ss["student_info"] = {
+                "StudentName": student_row.get("Student_Name", ""),
+                "Class": student_row.get("Class", ""),
+                "RollNo": student_row.get("Roll_No", ""),
+                "StudentEmail": student_row.get("Student_Email", ""),
+                "ParentEmail": student_row.get("Parent_Email", ""),
+                "Tuition_Code": tuition_code.strip(),
+                "Student_ID": student_id.strip(),
+                "Password": student_password.strip(),   # ✅ NEW LINE
+            }
+        else:
+            st.error("❌ Invalid Tuition Code or Student ID. Please try again.")
 
 if not ss.get("student_verified", False):
     st.stop()
