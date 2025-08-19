@@ -17,6 +17,13 @@ import base64
 import random
 import hashlib
 import requests
+import io
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+t
+
 ss = st.session_state
 # ---------- Initialize session_state keys ----------
 if "student_info" not in ss:
@@ -534,43 +541,62 @@ if st.session_state.get("main_submitted", False):
     fig, ax = plt.subplots(figsize=(4,2))
     correct_count = main_res['earned']
     wrong_count = main_res['total'] - main_res['earned']
-    ax.bar(['Correct','Incorrect'], [correct_count, wrong_count])
-    ax.set_title("Main Performance")
-    st.pyplot(fig)
+    ax.bar(['Correct','Incorrect'], [correct_count, wrong_count],
+           color=['blue','red'])
+   ax.set_title("Main Performance")
+   ax.set_ylim(0, max(correct_count, wrong_count) + 1)
+   ax.set_yticks(range(0, max(correct_count, wrong_count) + 2))
+   ax.set_ylabel("Number of Questions")
+   st.pyplot(fig)
 
     # Build PDF bytes (reportlab + embed plt as image)
     def build_pdf_bytes():
         buffer = io.BytesIO()
-        c = canvas.Canvas(buffer, pagesize=A4)
-        width, height = A4
-        c.setFont("Helvetica-Bold", 16)
-        c.drawString(40, height - 50, f"Quiz Report: {subject} - {subtopic_id}")
-        c.setFont("Helvetica", 12)
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        elements = []
+        styles = getSampleStyleSheet()
+        ...
+        doc.build(elements)
+        buffer.seek(0)
+        return buffer.read()
+        # Title
+        elements.append(Paragraph(f"Quiz Report: {subject} - {subtopic_id}", styles["Title"]))
         info = ss.get("student_info", {})
-        c.drawString(40, height - 80, f"Student: {info.get('StudentName','Unknown')} ({info.get('Student_ID','')})")
-        c.drawString(40, height - 100, f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        # embed chart
+        elements.append(Paragraph(f"Student: {info.get('StudentName','Unknown')} ({info.get('Student_ID','')})", styles["Normal"]))
+        elements.append(Paragraph(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles["Normal"]))
+        elements.append(Spacer(1, 12))
+ 
+        # Insert chart
         imgbuf = io.BytesIO()
         fig.savefig(imgbuf, format="PNG", bbox_inches='tight')
         imgbuf.seek(0)
-        c.drawImage(ImageReader(imgbuf), 40, height - 350, width=400, preserveAspectRatio=True, mask='auto')
-        y = height - 380
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(40, y, "Main Results:")
-        y -= 20
+        from reportlab.platypus import Image
+        elements.append(Image(imgbuf, width=400, height=200))
+        elements.append(Spacer(1, 20))
+
+        # Build table data (Question | Your Answer | Correct Answer)
+        table_data = [["Q.No", "Question", "Your Answer", "Correct Answer"]]
         for _, q in main_questions.iterrows():
             qid = str(q.get("QuestionID","")).strip()
             qtext = str(q.get("QuestionText","")).strip()
             given = st.session_state.main_user_answers.get(qid,"")
             correct = get_correct_value(q)
-            c.setFont("Helvetica", 10)
-            c.drawString(45, y, f"{qid}: Your: {given}  |  Correct: {correct}")
-            y -= 14
-            if y < 80:
-                c.showPage()
-                y = height - 50
-        c.showPage()
-        c.save()
+            table_data.append([qid, qtext, given, correct])
+
+        # Create table
+        table = Table(table_data, colWidths=[40, 220, 100, 100])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+            ('TEXTCOLOR',(0,0),(-1,0),colors.black),
+            ('ALIGN',(0,0),(-1,-1),'LEFT'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 11),
+            ('BOTTOMPADDING', (0,0), (-1,0), 6),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ]))
+
+        elements.append(table)
+        doc.build(elements)
         buffer.seek(0)
         return buffer.read()
 
@@ -622,6 +648,16 @@ if st.session_state.get("main_submitted", False):
         # ---------------------------
         # Optional: Student self-copy
         # ---------------------------
+        st.markdown("### 📄 Download Your Report")
+        pdf_bytes = build_pdf_bytes()
+        info = ss.get("student_info", {})
+        st.download_button(
+            label="⬇️ Download PDF Report",
+            data=pdf_bytes,
+            file_name=f"{info.get('StudentName','student')}_report.pdf",
+            mime="application/pdf"
+        )
+            
         if st.button("📧 Send Copy to My Email"):
             if not student_email:
                 st.error("No student email found in register.")
