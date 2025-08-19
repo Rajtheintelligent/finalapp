@@ -591,56 +591,54 @@ for r in bars:
 
 st.pyplot(fig)
 
+# Build PDF bytes (reportlab + embed plt as image)
+def build_pdf_bytes():
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    elements = []
+    styles = getSampleStyleSheet()
 
-    # Build PDF bytes (reportlab + embed plt as image)
-    def build_pdf_bytes():
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4)
-        elements = []
-        styles = getSampleStyleSheet()
-        doc.build(elements)
-        buffer.seek(0)
-        return buffer.read()
-        # Title
-        elements.append(Paragraph(f"Quiz Report: {subject} - {subtopic_id}", styles["Title"]))
-        info = ss.get("student_info", {})
-        elements.append(Paragraph(f"Student: {info.get('StudentName','Unknown')} ({info.get('Student_ID','')})", styles["Normal"]))
-        elements.append(Paragraph(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles["Normal"]))
-        elements.append(Spacer(1, 12))
- 
-        # Insert chart
-        imgbuf = io.BytesIO()
-        fig.savefig(imgbuf, format="PNG", bbox_inches='tight')
-        imgbuf.seek(0)
-        from reportlab.platypus import Image
-        elements.append(Image(imgbuf, width=400, height=200))
-        elements.append(Spacer(1, 20))
+    # Title
+    elements.append(Paragraph(f"Quiz Report: {subject} - {subtopic_id}", styles["Title"]))
+    info = ss.get("student_info", {})
+    elements.append(Paragraph(f"Student: {info.get('StudentName','Unknown')} ({info.get('Student_ID','')})", styles["Normal"]))
+    elements.append(Paragraph(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles["Normal"]))
+    elements.append(Spacer(1, 12))
 
-        # Build table data (Question | Your Answer | Correct Answer)
-        table_data = [["Q.No", "Question", "Your Answer", "Correct Answer"]]
-        for _, q in main_questions.iterrows():
-            qid = str(q.get("QuestionID","")).strip()
-            qtext = str(q.get("QuestionText","")).strip()
-            given = st.session_state.main_user_answers.get(qid,"")
-            correct = get_correct_value(q)
-            table_data.append([qid, qtext, given, correct])
+    # Insert chart
+    imgbuf = io.BytesIO()
+    fig.savefig(imgbuf, format="PNG", bbox_inches='tight')
+    imgbuf.seek(0)
+    elements.append(Image(imgbuf, width=400, height=200))
+    elements.append(Spacer(1, 20))
 
-        # Create table
-        table = Table(table_data, colWidths=[40, 220, 100, 100])
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
-            ('TEXTCOLOR',(0,0),(-1,0),colors.black),
-            ('ALIGN',(0,0),(-1,-1),'LEFT'),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0,0), (-1,0), 11),
-            ('BOTTOMPADDING', (0,0), (-1,0), 6),
-            ('GRID', (0,0), (-1,-1), 0.5, colors.black),
-        ]))
+    # Build table data (Question | Your Answer | Correct Answer)
+    table_data = [["Q.No", "Question", "Your Answer", "Correct Answer"]]
+    for _, q in main_questions.iterrows():
+        qid = str(q.get("QuestionID","")).strip()
+        qtext = str(q.get("QuestionText","")).strip()
+        given = st.session_state.main_user_answers.get(qid,"")
+        correct = get_correct_value(q)
+        table_data.append([qid, qtext, given, correct])
 
-        elements.append(table)
-        doc.build(elements)
-        buffer.seek(0)
-        return buffer.read()
+    # Create table
+    table = Table(table_data, colWidths=[40, 220, 100, 100])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+        ('TEXTCOLOR',(0,0),(-1,0),colors.black),
+        ('ALIGN',(0,0),(-1,-1),'LEFT'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 11),
+        ('BOTTOMPADDING', (0,0), (-1,0), 6),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+    ]))
+    elements.append(table)
+
+    # Build document
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer.read()
+
 
     pdf_bytes = build_pdf_bytes()
     info = ss.get("student_info", {})
