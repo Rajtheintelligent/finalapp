@@ -80,6 +80,17 @@ def get_correct_value(row):
 
 def safe_str(v):
     return str(v) if v is not None else ""
+# ---------- Check if all main quiz questions are answered ----------
+def all_answered_main(q_rows):
+    """
+    Returns True if every question in q_rows has a non-empty answer in session_state.
+    """
+    for row in q_rows:
+        qid = str(row.QuestionID).strip()
+        ans = ss["main_user_answers"].get(qid)
+        if not ans:  # catches None or empty string
+            return False
+    return True
 
 # ---------- PARAMETERS & BANK ----------
 param = get_params()
@@ -153,22 +164,25 @@ st.title(f"📄 {subject} — {subtopic_id.replace('_',' ')}")
 
 with st.expander("👤 Student Verification", expanded=not ss.get("student_verified", False)):
     with st.form("student_verification"):
-        c1, c2 = st.columns([1,1])
+        c1, c2, c3 = st.columns([1,1,1])
         with c1:
             tuition_code = st.text_input("Tuition Code*", value=ss.get("student_info", {}).get("Tuition_Code", ""))
         with c2:
             student_id = st.text_input("Student ID*", value=ss.get("student_info", {}).get("Student_ID", ""))
+        with c3:
+            student_password = st.text_input("Password*", type="password")
+
         verify_submit = st.form_submit_button("Submit Verification")
 
-    if verify_submit:
-        if not tuition_code.strip() or not student_id.strip():
-            st.error("⚠ Please fill in both Tuition Code and Student ID.")
-        else:
-            # lookup in register sheet
-            mask = (
-                (register_df["Tuition_Code"].astype(str).str.strip() == tuition_code.strip()) &
-                (register_df["Student_ID"].astype(str).str.strip() == student_id.strip())
-            )
+if verify_submit:
+    if not tuition_code.strip() or not student_id.strip() or not student_password.strip():
+        st.error("⚠ Please fill in Tuition Code, Student ID and Password.")
+    else:
+        mask = (
+            (register_df["Tuition_Code"].astype(str).str.strip() == tuition_code.strip()) &
+            (register_df["Student_ID"].astype(str).str.strip() == student_id.strip()) &
+            (register_df["Password"].astype(str).str.strip() == student_password.strip())
+        )
 
             if mask.any():
                 student_row = register_df[mask].iloc[0]
@@ -182,6 +196,7 @@ with st.expander("👤 Student Verification", expanded=not ss.get("student_verif
                     "ParentEmail": student_row.get("Parent_Email", ""),
                     "Tuition_Code": tuition_code.strip(),
                     "Student_ID": student_id.strip(),
+                    "Password": student_password.strip(),   # ✅ NEW LINE
                 }
             else:
                 st.error("❌ Invalid Tuition Code or Student ID. Please try again.")
@@ -373,7 +388,7 @@ with st.form("main_quiz"):
             st.image(img, use_container_width=True)
         # restore previous selection if exists (index used is last chosen index)
         prev = st.session_state.main_user_answers.get(qid, None)
-        sel = st.radio("Select your answer:", options=disp_opts, key=f"main_{qid}", index=0 if prev is None else disp_opts.index(prev))
+        sel = st.radio("Select your answer:", options=disp_opts, key=f"main_{qid}", index=None if prev is None else disp_opts.index(prev))
         st.session_state.main_user_answers[qid] = sel
         st.markdown("---")
     submit_main = st.form_submit_button("Submit Main Quiz")
