@@ -507,15 +507,46 @@ if not ss["auto_emailed"]:
         ss["auto_emailed"] = True
     except Exception as e:
         st.warning(f"Auto email failed: {e}")
-
-            st.rerun()  # flip UI to review mode instantly
-
+        st.rerun()  # flip UI to review mode instantly
+        
 else:
     # --- REVIEW MODE (after submit): only highlight the CORRECT option in green ---
     res = ss["main_results"]
-    st.markdown("### Main Quiz Review")
-    st.success(f"Score: {res['earned']}/{res['total']}")
 
+    # If your results are stored as a dict with "questions", "earned", "total"
+    questions = res["questions"]       # list of dicts
+    earned = res["earned"]
+    total = res["total"]
+
+    st.markdown("### Main Quiz Review")
+
+    for q in questions:   # <-- loop through each question result
+        question = q["question"]
+        options = q["options"]
+        correct_answer = q["correct"]
+        student_answer = q["student"]
+
+        st.markdown(f"**Q: {question}**")
+
+        for option in options:
+            if option == correct_answer:
+                # Always highlight the correct answer in green
+                st.markdown(
+                    f"<span style='color: green; font-weight: bold;'>{option}</span>", 
+                    unsafe_allow_html=True
+                )
+            elif option == student_answer:
+                # Mark the student’s chosen option (not green, but labeled)
+                st.markdown(
+                    f"<span style='font-weight: bold;'>{option} ✅ (your choice)</span>", 
+                    unsafe_allow_html=True
+                )
+            else:
+                st.write(option)
+
+        st.write("---")  # separator between questions
+
+    st.success(f"Score: {earned}/{total}")
     for _, q in main_questions.iterrows():
         qid     = str(q.get("QuestionID","")).strip()
         qtext   = str(q.get("QuestionText","")).strip()
