@@ -557,37 +557,76 @@ if st.session_state.get("main_submitted", False):
 
     pdf_bytes = build_pdf_bytes()
     info = ss.get("student_info", {})
-    st.download_button("📄 Download PDF Report", data=pdf_bytes,
-                       file_name=f"report_{info.get('Student_ID','')}_{subtopic_id}.pdf", 
-                       mime="application/pdf")
 
-    # EMAIL option (optional): requires SMTP in secrets
-    if st.button("📧 Email Report to Parent & Student"):
-        try:
-            smtp_cfg = st.secrets.get("smtp", {})
-            if not smtp_cfg:
-                st.error("SMTP config not found in secrets.toml.")
+    try:
+        smtp_cfg = st.secrets.get("smtp", {})
+        if not smtp_cfg:
+            st.error("SMTP config not found in secrets.toml.")
+        else:
+            # ---------------------------
+            # Auto-send to Parent + Teachers
+            # ---------------------------
+            msg = EmailMessage()
+            msg["Subject"] = f"Quiz Report: {subject} - {subtopic_id}"
+            msg["From"] = smtp_cfg.get("from_email")
+
+            # Collect recipients
+            student_email = info.get("StudentEmail", "")
+            parent_email = info.get("ParentEmail", "")
+            subject_teacher = info.get(f"{subject.title()}_Teacher", "")
+            head_teacher = info.get("Head_Teacher", "")
+
+            to_auto = []
+            if parent_email: to_auto.append(parent_email)
+            if subject_teacher: to_auto.append(subject_teacher)
+            if head_teacher: to_auto.append(head_teacher)
+
+            if not to_auto:
+                st.error("No parent/teacher email found for this student in Register.")
             else:
-                msg = EmailMessage()
-                msg["Subject"] = f"Quiz Report: {subject} - {subtopic_id}"
-                msg["From"] = smtp_cfg.get("from_email")
-                to_addrs = []
-                info = ss.get("student_info", {})
-                student_email = info.get("StudentEmail","")
-                parent_email = info.get("ParentEmail","")
-                if student_email: to_addrs.append(student_email)
-                if parent_email: to_addrs.append(parent_email)
-                if not to_addrs:
-                    st.error("No student/parent email found in register.")
-                else:
-                    msg["To"] = ", ".join(to_addrs)
-                    msg.set_content("Please find attached the quiz report.")
-                    msg.add_attachment(pdf_bytes, maintype="application", subtype="pdf", filename=f"report_{student_id}.pdf")
+                msg["To"] = ", ".join(to_auto)
+                msg.set_content("Please find attached the quiz report.")
+                msg.add_attachment(
+                    pdf_bytes,
+                    maintype="application",
+                    subtype="pdf",
+                    filename=f"report_{info.get('Student_ID','')}.pdf"
+                )
+
+                server = smtplib.SMTP(smtp_cfg.get("server"), int(smtp_cfg.get("port",587)))
+                server.starttls()
+                server.login(smtp_cfg.get("username"), smtp_cfg.get("password"))
+                server.send_message(msg)
+                server.quit()
+                st.success("✅ Report sent automatically to Parent + Teacher(s).")
+
+        # ---------------------------
+        # Optional: Student self-copy
+        # ---------------------------
+        if st.button("📧 Send Copy to My Email"):
+            if not student_email:
+                st.error("No student email found in register.")
+            else:
+                try:
+                    msg2 = EmailMessage()
+                    msg2["Subject"] = f"Your Quiz Report: {subject} - {subtopic_id}"
+                    msg2["From"] = smtp_cfg.get("from_email")
+                    msg2["To"] = student_email
+                    msg2.set_content("Here is your personal copy of the quiz report.")
+                    msg2.add_attachment(
+                        pdf_bytes,
+                        maintype="application",
+                        subtype="pdf",
+                        filename=f"report_{info.get('Student_ID','')}.pdf"
+                    )
                     server = smtplib.SMTP(smtp_cfg.get("server"), int(smtp_cfg.get("port",587)))
                     server.starttls()
                     server.login(smtp_cfg.get("username"), smtp_cfg.get("password"))
-                    server.send_message(msg)
+                    server.send_message(msg2)
                     server.quit()
-                    st.success("Email sent successfully!")
-        except Exception as e:
-            st.error(f"Failed to send email: {e}")
+                    st.success("📧 Report sent to your email.")
+                except Exception as e:
+                    st.error(f"Failed to send student copy: {e}")
+
+    except Exception as e:
+        st.error(f"Failed to send email: {e}")
