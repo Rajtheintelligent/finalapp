@@ -24,6 +24,34 @@ from reportlab.lib.styles import getSampleStyleSheet
 
 # ---------- CONFIG / SETUP ----------
 st.set_page_config(page_title="Quiz Form", layout="centered")
+# -----------------------------
+# Anti-cheat (JS + CSS snippet)
+# -----------------------------
+ANTI_CHEAT_JS = """
+<script>
+document.addEventListener("visibilitychange", function() {
+    if (document.hidden) {
+        alert("⚠️ Switching tabs is not allowed during the quiz!");
+    }
+});
+
+// Disable right click
+document.addEventListener("contextmenu", function(e) {
+    e.preventDefault();
+    alert("⚠️ Right click is disabled during the quiz!");
+});
+
+// Disable copy-paste
+document.addEventListener("copy", function(e) {
+    e.preventDefault();
+    alert("⚠️ Copy is disabled!");
+});
+document.addEventListener("paste", function(e) {
+    e.preventDefault();
+    alert("⚠️ Paste is disabled!");
+});
+</script>
+"""
 
 ss = st.session_state
 # ---------- Initialize session_state keys ----------
