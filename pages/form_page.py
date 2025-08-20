@@ -25,6 +25,7 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 
 # --- Email ---
 import smtplib
@@ -55,7 +56,7 @@ if "main_results" not in ss:
 if "remedial_answers" not in ss:
     ss["remedial_answers"] = {}
   
-def build_pdf_bytes(score, total, wrong_table):
+def build_pdf_bytes(subject, subtopic_id, res, fig, ss):
     """
     Build a simple PDF report and return it as bytes.
     """
