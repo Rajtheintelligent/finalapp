@@ -633,7 +633,7 @@ else:
         styles = getSampleStyleSheet()
         
         # Override default Normal style with Unicode font
-        normal_style = ParagraphStyle("NormalUnicode", parent=styles["Normal"], fontName="DejaVuSans", fontSize=10)
+        normal_style = ParagraphStyle("NormalUnicode", parent=styles["Normal"], fontName="Helvetica", fontSize=10)
 
         # Title
         elements.append(Paragraph(f"Quiz Report: {subject} - {subtopic_id}", styles["Title"]))
@@ -671,7 +671,7 @@ else:
             ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
             ('TEXTCOLOR',(0,0),(-1,0),colors.black),
             ('ALIGN',(0,0),(-1,-1),'LEFT'),
-            ('FONTNAME', (0,0), (-1,-1), 'DejaVuSans'),
+            ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
             ('FONTSIZE', (0,0), (-1,-1), 9),
             ('BOTTOMPADDING', (0,0), (-1,0), 6),
             ('GRID', (0,0), (-1,-1), 0.5, colors.black),
