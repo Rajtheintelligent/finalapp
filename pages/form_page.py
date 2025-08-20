@@ -278,7 +278,6 @@ if verify_submit:
 
 if not ss.get("student_verified", False):
     st.stop()
-st.markdown(ANTI_CHEAT_JS, unsafe_allow_html=True)
     
 # -----------------------------
 # Anti-cheat (JS + minimal CSS)
@@ -363,6 +362,8 @@ window.addEventListener("blur", triggerCheatLock, { passive: true });
 }
 </style>
 """
+st.markdown(ANTI_CHEAT_JS, unsafe_allow_html=True)
+
 # ---------- LOAD QUESTIONS ----------
 try:
     q_book = client.open_by_url(question_sheet_url)
