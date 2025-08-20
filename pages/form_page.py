@@ -771,31 +771,31 @@ if ss.get("remedial_ready", False):
                         st.error("⚠ Please answer all remedial questions before submitting.")
                     else:
                     # ---------- GRADE ----------
-                    rem_total, rem_earned = 0, 0
-                    for _, r in rem_set.iterrows():
-                        rqid    = str(r.get("RemedialQuestionID", "")).strip()
-                        correct = get_correct_value(r)
-                        given   = str(ss["remedial_answers"].get(rqid, "")).strip()
-                        marks   = int(r.get("Marks") or 1)
-                        awarded = marks if (given and given == correct) else 0
-                        rem_total  += marks
-                        rem_earned += awarded
-
-                        # Save to Responses sheet
-                        append_response_row(
-                            datetime.now().isoformat(),
-                            ss["student_info"].get("Student_ID", ""),
-                            ss["student_info"].get("StudentName", ""),
-                            ss["student_info"].get("Tuition_Code", ""),
-                            subject, subtopic_id, rqid, given, correct, awarded, "Remedial"
-                        )
-
-                    ss["remedial_results"] = {"total": rem_total, "earned": rem_earned}
-                    st.markdown("### Remedial Quiz Review")
-                    st.success(f"Your Remedial Score: {res['earned']} / {res['total']}")
-                    ss["remedial_submitted"] = True
-                    st.balloons()
-                    st.rerun()
+                        rem_total, rem_earned = 0, 0
+                        for _, r in rem_set.iterrows():
+                            rqid    = str(r.get("RemedialQuestionID", "")).strip()
+                            correct = get_correct_value(r)
+                            given   = str(ss["remedial_answers"].get(rqid, "")).strip()
+                            marks   = int(r.get("Marks") or 1)
+                            awarded = marks if (given and given == correct) else 0
+                            rem_total  += marks
+                            rem_earned += awarded
+                            
+                            # Save to Responses sheet
+                            append_response_row(
+                                datetime.now().isoformat(),
+                                ss["student_info"].get("Student_ID", ""),
+                                ss["student_info"].get("StudentName", ""),
+                                ss["student_info"].get("Tuition_Code", ""),
+                                subject, subtopic_id, rqid, given, correct, awarded, "Remedial"
+                            )
+                            
+                        ss["remedial_results"] = {"total": rem_total, "earned": rem_earned}
+                        st.markdown("### Remedial Quiz Review")
+                        st.success(f"Your Remedial Score: {rem_earned} / {rem_total}")
+                        ss["remedial_submitted"] = True
+                        st.balloons()
+                        st.rerun()
 
             else:
                 # ---------- REVIEW MODE ----------
