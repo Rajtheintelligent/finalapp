@@ -452,6 +452,13 @@ def _all_answered(qrows):
         if not ss["main_user_answers"].get(qid):
             return False
     return True
+def _all_remedial_answered(rem_set):
+    for r in rem_set.itertuples(index=False):
+        rqid = str(getattr(r, "RemedialQuestionID", "")).strip()
+        if not ss["remedial_answers"].get(rqid):
+            return False
+    return True
+
 
 # ------------------ BEFORE SUBMIT ------------------
 if not ss["main_submitted"]:
