@@ -7,19 +7,35 @@ from datetime import datetime
 import time
 import io
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
+
+# --- ReportLab (PDF generation) ---
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Table,
+    TableStyle,
+    Paragraph,
+    Spacer,
+    Image,
+)
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
+# --- Email ---
 import smtplib
 from email.message import EmailMessage
+
+# --- Other utilities ---
 import base64
 import random
 import hashlib
 import requests
-from matplotlib.ticker import MaxNLocator
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
-from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet
+
 
 # ---------- CONFIG / SETUP ----------
 st.set_page_config(page_title="Quiz Form", layout="centered")
@@ -609,11 +625,14 @@ else:
     st.pyplot(fig)
 
     # --- Build PDF function ---
-    def build_pdf_bytes():
+    def build_pdf_bytes(subject, subtopic_id, res, fig, ss):
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4)
         elements = []
         styles = getSampleStyleSheet()
+        
+        # Override default Normal style with Unicode font
+        normal_style = ParagraphStyle("NormalUnicode", parent=styles["Normal"], fontName="DejaVuSans", fontSize=10)
 
         # Title
         elements.append(Paragraph(f"Quiz Report: {subject} - {subtopic_id}", styles["Title"]))
@@ -630,23 +649,36 @@ else:
         elements.append(Spacer(1, 20))
 
         # Table data
-        table_data = [["Q.No", "Question", "Your Answer", "Correct Answer"]]
+        table_data = [
+            [
+                Paragraph("Q.No", normal_style),
+                Paragraph("Question", normal_style),
+                Paragraph("Your Answer", normal_style),
+                Paragraph("Correct Answer", normal_style),
+            ]
+        ]
         for q in res["questions"]:
-            table_data.append([q["qid"], q["question"], q["student"], q["correct"]])
-
-        table = Table(table_data, colWidths=[40, 220, 100, 100])
+            table_data.append([
+                Paragraph(q["qid"], normal_style),
+                Paragraph(q["question"], normal_style),
+                Paragraph(q["student"], normal_style),
+                Paragraph(q["correct"], normal_style)
+            ])
+            
+        table = Table(table_data, colWidths=[50, 220, 120, 120])
         table.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
             ('TEXTCOLOR',(0,0),(-1,0),colors.black),
             ('ALIGN',(0,0),(-1,-1),'LEFT'),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0,0), (-1,0), 11),
+            ('FONTNAME', (0,0), (-1,-1), 'DejaVuSans'),
+            ('FONTSIZE', (0,0), (-1,-1), 9),
             ('BOTTOMPADDING', (0,0), (-1,0), 6),
             ('GRID', (0,0), (-1,-1), 0.5, colors.black),
         ]))
         elements.append(table)
 
         # Build document
+        elements.append(table)
         doc.build(elements)
         buffer.seek(0)
         return buffer.read()
