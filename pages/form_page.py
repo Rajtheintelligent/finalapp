@@ -209,15 +209,15 @@ try:
     response_sheets = st.secrets["google"]["response_sheet_urls"]
     register_sheet_url = st.secrets["google"]["register_sheet_url"]
 
-    if bank not in question_sheets:
-        st.error(f"No question sheet configured for bank '{bank}'. Check secrets.toml.")
+    if qsheet_key not in question_sheets:
+        st.error(f"No question sheet configured for key '{qsheet_key}'. Check secrets.toml.")
         st.stop()
-    if bank not in response_sheets:
-        st.error(f"No response sheet configured for bank '{bank}'. Check secrets.toml.")
+    if rsheet_key not in response_sheets:
+        st.error(f"No response sheet configured for key '{rsheet_key}'. Check secrets.toml.")
         st.stop()
     
-    question_sheet_url = question_sheets[bank]
-    response_sheet_url = response_sheets[bank]
+    question_sheet_url = question_sheets[qsheet_key]
+    response_sheet_url = response_sheets[rsheet_key]
 except Exception as e:
     st.error(f"Error loading sheet URLs from secrets: {e}")
     st.stop()
