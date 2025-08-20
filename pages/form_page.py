@@ -684,7 +684,7 @@ else:
         return buffer.read()
 
     # --- Download button ---
-    pdf_bytes = build_pdf_bytes()
+    pdf_bytes = build_pdf_bytes(subject, subtopic_id, res, fig, ss)
     st.download_button(
         "📄 Download PDF Report",
         data=pdf_bytes,
