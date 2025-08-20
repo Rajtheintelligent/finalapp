@@ -439,7 +439,7 @@ def _all_answered(qrows):
 # ------------------ BEFORE SUBMIT ------------------
 if not ss["main_submitted"]:
     with st.form("main_quiz"):
-        for row in q_rows:
+        for i, row in enumerate(q_rows, start=1):
             rowd  = row._asdict()
             qid   = str(rowd.get("QuestionID","")).strip()
             qtext = str(rowd.get("QuestionText","")).strip()
@@ -452,7 +452,7 @@ if not ss["main_submitted"]:
             opts = [o for o in opts if o]
             disp_opts = stable_shuffle(opts, seed_base + f"::OPT::{qid}")
 
-            st.markdown(f"**{qid}**. {qtext}")
+            st.markdown(f"**{qid}**<br>{qtext}", unsafe_allow_html=True)
             if img:
                 st.image(img, use_container_width=True)
 
@@ -700,9 +700,9 @@ if ss.get("remedial_ready", False):
             if not ss["remedial_submitted"]:
                 # ---------- INPUT MODE ----------
                 with st.form("remedial_form"):
-                    for _, r in rem_set.iterrows():
-                        rqid  = str(r.get("RemedialQuestionID", "")).strip()
-                        rtext = str(r.get("QuestionText", "")).strip()
+                    for j, r in enumerate(rem_set.itertuples(index=False), start=1):
+                        rqid  = str(getattr(r, "RemedialQuestionID", "")).strip()
+                        rtext = str(getattr(r, "QuestionText", "")).strip()
                         rimg  = normalize_img_url(r.get("ImageURL", ""))
                         rhint = str(r.get("Hint", "")).strip()
 
@@ -715,7 +715,7 @@ if ss.get("remedial_ready", False):
                         opts = [o for o in opts if o]
                         disp_opts = stable_shuffle(opts, seed_base + f"::ROPT::{rqid}")
 
-                        st.markdown(f"**{rqid}.** {rtext}")
+                        st.markdown(f"**{rqid}**<br>{rtext}", unsafe_allow_html=True)
                         if rimg:
                             st.image(rimg, use_container_width=True)
                         if rhint:
@@ -735,6 +735,9 @@ if ss.get("remedial_ready", False):
                     submit_remedial = st.form_submit_button("Submit Remedial")
 
                 if submit_remedial:
+                    if not _all_remedial_answered(rem_set):
+                        st.error("⚠ Please answer all remedial questions before submitting.")
+                    else:
                     # ---------- GRADE ----------
                     rem_total, rem_earned = 0, 0
                     for _, r in rem_set.iterrows():
@@ -756,6 +759,8 @@ if ss.get("remedial_ready", False):
                         )
 
                     ss["remedial_results"] = {"total": rem_total, "earned": rem_earned}
+                    st.markdown("### Remedial Quiz Review")
+                    st.success(f"Your Remedial Score: {res['earned']} / {res['total']}")
                     ss["remedial_submitted"] = True
                     st.balloons()
                     st.rerun()
@@ -789,7 +794,46 @@ if ss.get("remedial_ready", False):
                         style = "background-color: rgba(0,255,0,0.2); border-radius: 5px;" if opt == correct else ""
                         st.markdown(f"<div style='{style}; padding:4px;'>{opt}</div>", unsafe_allow_html=True)
 
-                    st.markdown("---")
+st.markdown("---")
+
+import matplotlib.pyplot as plt
+
+correct_q = res["earned"]
+incorrect_q = res["total"] - res["earned"]
+
+labels = ["Correct", "Incorrect"]
+values = [correct_q, incorrect_q]
+
+# --- Theme-aware colors (reuse from main) ---
+base    = st.get_option("theme.base") or "light"
+primary = st.get_option("theme.primaryColor") or "#4CAF50"
+text    = st.get_option("theme.textColor") or ("#31333F" if base == "light" else "#FAFAFA")
+bg      = st.get_option("theme.backgroundColor") or ("#FFFFFF" if base == "light" else "#0E1117")
+sbg     = st.get_option("theme.secondaryBackgroundColor") or ("#F5F5F5" if base == "light" else "#262730")
+error   = "#E53935" if base == "light" else "#FF6B6B"
+
+# --- Figure ---
+fig, ax = plt.subplots(figsize=(4,4))
+fig.patch.set_facecolor(bg)
+ax.set_facecolor(sbg)
+
+# --- Pie chart ---
+wedges, texts, autotexts = ax.pie(
+    values, labels=labels, autopct='%1.0f%%',
+    colors=[primary, error], startangle=90,
+    wedgeprops={"linewidth":1, "edgecolor":bg},
+    textprops={"color": text, "fontsize":11}
+)
+
+# --- Title ---
+ax.set_title("Remedial Performance", color=text, fontsize=14, weight="bold", pad=10)
+
+# --- Improve percentage text contrast ---
+for autotext in autotexts:
+    autotext.set_color("white")
+    autotext.set_weight("bold")
+
+st.pyplot(fig)
 
 
 
