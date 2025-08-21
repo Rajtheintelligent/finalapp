@@ -566,14 +566,14 @@ else:
                     )
                 else:
                     st.markdown(
-                        f"<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:4px;'>{opt} ❌</div>",
+                        f"<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:4px;'>{opt} ❌ Incorrect</div>",
                         unsafe_allow_html=True
                     )                        
             elif opt == q["correct"]:
                 # Show correct answer but without background
-                st.markdown(f"{opt} ✅ Correct")
+                st.markdown(f"<div>{opt} ✅ Correct</div>", unsafe_allow_html=True)
             else:
-                st.write(opt)
+                st.markdown(f"<div>{opt}</div>", unsafe_allow_html=True)
 
         st.write("---")
 
