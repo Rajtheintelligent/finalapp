@@ -716,7 +716,6 @@ else:
         elements.append(table)
 
         # Build document
-        elements.append(table)
         doc.build(elements)
         buffer.seek(0)
         return buffer.read()
@@ -856,7 +855,7 @@ if ss.get("remedial_ready", False):
                     opts = [o for o in opts if o]
                     disp_opts = stable_shuffle(opts, seed_base + f"::ROPT::{rqid}")
 
-                    st.markdown(f"**{rqid}.** {rtext}")
+                    st.markdown(f"**{rqid}**<br>{rtext}", unsafe_allow_html=True)
                     if rimg:
                         st.image(rimg, use_container_width=True)
 
@@ -865,18 +864,40 @@ if ss.get("remedial_ready", False):
                         if opt == student_ans:
                             if opt == correct:
                                 st.markdown(
-                                    f"<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:5px;'>{opt} ✅ Correct</div>",
+                                    f"""
+                                    <div style='background-color: rgba(0,255,0,0.15);
+                                                padding:4px; border-radius:5px;
+                                                display:flex; justify-content:space-between;'>
+                                        <span>{opt}</span>
+                                        <span>✅ Correct</span>
+                                    </div>
+                                    """,
                                     unsafe_allow_html=True
                                 )
                             else:
                                 st.markdown(
-                                    f"<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:5px;'>{opt} ❌</div>",
+                                    f""",
+                                    <div style='background-color: rgba(0,255,0,0.15);
+                                                padding:4px; border-radius:5px;
+                                                display:flex; justify-content:space-between;'>
+                                        <span>{opt}</span>
+                                        <span>❌ Incorrect</span>
+                                    </div>
+                                    """,
                                     unsafe_allow_html=True
                                 )
                         elif opt == correct:
-                            st.markdown(f"{opt} ✅ Correct")
+                            st.markdown(
+                                f"""
+                                <div style='display:flex; justify-content:space-between;'>
+                                    <span>{opt}</span>
+                                    <span>✅ Correct</span>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )   
                         else:
-                            st.write(opt)
+                            st.markdown(f"<div>{opt}</div>", unsafe_allow_html=True)
 
                 st.markdown("---")
 
