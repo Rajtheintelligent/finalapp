@@ -440,7 +440,7 @@ seed_base = f"{info.get('Student_ID','anon')}::{subtopic_id}"
 # ---------- MAIN QUIZ FORM ----------
 st.header("Main Quiz (Attempt 1)")
 q_rows = list(main_questions.itertuples(index=False))
-q_rows = stable_shuffle(q_rows, seed_base + "::Q")
+#q_rows = stable_shuffle(q_rows, seed_base + "::Q")    #later if you want main questions to shuffle 
 
 ss.setdefault("main_user_answers", {})
 ss.setdefault("main_submitted", False)
@@ -552,7 +552,8 @@ else:
     st.markdown("### ✅ Main Quiz Review")
 
     for q in res["questions"]:
-        st.markdown(f"**{q['qid']}**. {q['question']}")
+        st.markdown(f"**Q{q['qid']}**")   # Question number on its own line
+        st.markdown(q["question"])        # Question text below it
         if q["image"]:
             st.image(q["image"], use_container_width=True)
 
@@ -876,7 +877,7 @@ if ss.get("remedial_ready", False):
                                 )
                             else:
                                 st.markdown(
-                                    f""",
+                                    f"""
                                     <div style='background-color: rgba(0,255,0,0.15);
                                                 padding:4px; border-radius:5px;
                                                 display:flex; justify-content:space-between;'>
