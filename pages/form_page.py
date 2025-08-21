@@ -557,13 +557,21 @@ else:
             st.image(q["image"], use_container_width=True)
 
         for opt in q["options"]:
-            if opt == q["correct"]:
-                st.markdown(
-                    f"<div style='background-color: rgba(0,255,0,0.2); padding:4px; border-radius:4px;'>{opt} ✅ Correct</div>",
-                    unsafe_allow_html=True
-                )
-            elif opt == q["student"]:
-                st.markdown(f"**{opt} (your choice)**")
+            if opt == q["student"]:
+                # Student's chosen option (highlight light green always)
+                if opt == q["correct"]:
+                    st.markdown(
+                        f"<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:4px;'>{opt} ✅ Correct</div>",
+                        unsafe_allow_html=True
+                    )
+                else:
+                    st.markdown(
+                        f"<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:4px;'>{opt} ❌</div>",
+                        unsafe_allow_html=True
+                    )                        
+            elif opt == q["correct']
+                # Show correct answer but without background
+                st.markdown(f"{opt} ✅ Correct")
             else:
                 st.write(opt)
 
@@ -830,9 +838,23 @@ if ss.get("remedial_ready", False):
                     if rimg:
                         st.image(rimg, use_container_width=True)
 
+                    student_ans = ss["remedial_answers"].get(rqid, "")
                     for opt in disp_opts:
-                        style = "background-color: rgba(0,255,0,0.2); border-radius: 5px;" if opt == correct else ""
-                        st.markdown(f"<div style='{style}; padding:4px;'>{opt}</div>", unsafe_allow_html=True)
+                        if opt == student_ans:
+                            if opt == correct:
+                                st.markdown(
+                                    f"<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:5px;'>{opt} ✅ Correct</div>",
+                                    unsafe_allow_html=True
+                                )
+                            else:
+                                st.markdown(
+                                    f"<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:5px;'>{opt} ❌</div>",
+                                    unsafe_allow_html=True
+                                )
+                        elif opt == correct:
+                            st.markdown(f"{opt} ✅ Correct")
+                        else:
+                            st.write(opt)
 
                 st.markdown("---")
 
