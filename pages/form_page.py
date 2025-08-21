@@ -290,6 +290,23 @@ if verify_submit:
                 "Student_ID": student_id.strip(),
                 "Password": student_password.strip(),  
             }
+            # 🔎 --- NEW: Check if student already attempted this quiz ---
+#            try:
+#                resp_records = responses_ws.get_all_records()
+#                resp_df = pd.DataFrame(resp_records)
+#                
+#                already_main = (
+#                    (resp_df["Student_ID"].astype(str).str.strip() == student_id.strip()) &
+#                    (resp_df["Tuition_Code"].astype(str).str.strip() == tuition_code.strip()) &
+#                    (resp_df["Subtopic"].astype(str).str.strip() == subtopic_id) &
+#                    (resp_df["Attempt_Type"].astype(str).str.strip() == "Main")
+#                ).any()
+#                
+#                if already_main:
+#                    st.error("❌ You have already submitted this Main Quiz. Please wait for your teacher to share another form.")
+#                    st.stop()
+#            except Exception as e:
+#                st.warning(f"⚠ Could not verify previous attempts: {e}")        
         else:
             st.error("❌ Invalid Tuition Code or Student ID. Please try again.")
 
