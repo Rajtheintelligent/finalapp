@@ -561,12 +561,12 @@ else:
                 # Student's chosen option (highlight light green always)
                 if opt == q["correct"]:
                     st.markdown(
-                        f"<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:4px;'>{opt} ✅ Correct</div>",
+                        f"<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:4px;'>{opt}        (✅ Correct)</div>",
                         unsafe_allow_html=True
                     )
                 else:
                     st.markdown(
-                        f"<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:4px;'>{opt} ❌ Incorrect</div>",
+                        f"<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:4px;'>{opt}        (❌ Incorrect)</div>",
                         unsafe_allow_html=True
                     )                        
             elif opt == q["correct"]:
