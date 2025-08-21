@@ -569,7 +569,7 @@ else:
                         f"<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:4px;'>{opt} ❌</div>",
                         unsafe_allow_html=True
                     )                        
-            elif opt == q["correct"]
+            elif opt == q["correct"]:
                 # Show correct answer but without background
                 st.markdown(f"{opt} ✅ Correct")
             else:
