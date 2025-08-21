@@ -561,17 +561,39 @@ else:
                 # Student's chosen option (highlight light green always)
                 if opt == q["correct"]:
                     st.markdown(
-                        f"<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:4px;'>{opt}        (✅ Correct)</div>",
+                        f"""
+                        <div style='background-color: rgba(0,255,0,0.15); 
+                                    padding:4px; border-radius:4px;
+                                    display:flex; justify-content:space-between;'>
+                            <span>{opt}</span>
+                            <span>✅ Correct</span>
+                        </div>
+                        """,
                         unsafe_allow_html=True
                     )
                 else:
                     st.markdown(
-                        f"<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:4px;'>{opt}        (❌ Incorrect)</div>",
+                        f"""
+                        <div style='background-color: rgba(0,255,0,0.15);
+                                    padding:4px; border-radius:4px;
+                                    display:flex; justify-content:space-between;'>
+                            <span>{opt}</span>
+                            <span>❌ Incorrect</span>
+                        </div>
+                        """,
                         unsafe_allow_html=True
                     )                        
             elif opt == q["correct"]:
                 # Show correct answer but without background
-                st.markdown(f"<div>{opt} ✅ Correct</div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"""
+                    <div style='display:flex; justify-content:space-between;'>
+                        <span>{opt}</span>
+                        <span>✅ Correct</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
             else:
                 st.markdown(f"<div>{opt}</div>", unsafe_allow_html=True)
 
