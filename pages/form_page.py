@@ -102,8 +102,25 @@ def send_report_to_student(to_email, pdf_bytes):
     with smtplib.SMTP_SSL(smtp_cfg.get("server"), smtp_cfg.get("port")) as server:
         server.login(smtp_cfg.get("user"), smtp_cfg.get("password"))
         server.send_message(msg)
+        
+def send_report_to_parent(parent_email, pdf_bytes, student_name):
+    """
+    Send quiz report to parent via email.
+    """
+    msg = EmailMessage()
+    msg["Subject"] = f"Quiz Report for {student_name}"
+    msg["From"] = "noreply@myschool.com"
+    msg["To"] = parent_email
+    msg.set_content(
+        f"Dear Parent,\n\nAttached is the quiz performance report for {student_name}.\n\nRegards,\nMySchool"
+    )
+    
+    msg.add_attachment(pdf_bytes, maintype="application", subtype="pdf", filename="quiz_report.pdf")
 
-
+    smtp_cfg = st.secrets.get("smtp", {})
+    with smtplib.SMTP_SSL(smtp_cfg.get("server"), smtp_cfg.get("port")) as server:
+        server.login(smtp_cfg.get("user"), smtp_cfg.get("password"))
+        server.send_message(msg)
 
 # --- Helpful utilities (small, robust) ---
 def get_params():
@@ -558,7 +575,16 @@ if not ss["main_submitted"]:
                 "questions": question_results
             }
             ss["main_submitted"] = True
-            st.rerun()
+
+            # --- Auto-send PDF to Parent ---
+            try:
+                pdf_bytes = build_pdf_bytes(subject, subtopic_id, ss["main_results"], None, ss)
+                parent_email = ss["student_info"].get("ParentEmail", "")
+                student_name = ss["student_info"].get("StudentName", "Student")
+                if parent_email:
+                    send_report_to_parent(parent_email, pdf_bytes, student_name)
+            except Exception as e:
+                st.warning(f"Could not send parent report: {e}")
 
 # ------------------ AFTER SUBMIT (REVIEW MODE) ------------------
 else:
@@ -698,11 +724,12 @@ else:
         elements.append(Spacer(1, 12))
 
         # Insert chart
-        imgbuf = io.BytesIO()
-        fig.savefig(imgbuf, format="PNG", bbox_inches='tight')
-        imgbuf.seek(0)
-        elements.append(Image(imgbuf, width=400, height=200))
-        elements.append(Spacer(1, 20))
+        if fig:
+            imbuf = io.BytesIO()
+            fig.savefig(imgbuf, format="PNG", bbox_inches='tight')
+            imgbuf.seek(0)
+            elements.append(Image(imgbuf, width=400, height=200))
+            elements.append(Spacer(1, 20)
 
         # Table data
         table_data = [
@@ -756,6 +783,7 @@ else:
         else:
             send_report_to_student(student_email, pdf_bytes)
             st.success("📧 Report sent to your email.")
+    
 # ---------- REMEDIAL (shows below main, main stays visible) ----------
 if ss.get("main_submitted", False) and ss.get("main_results", {}).get("wrong_ids"):
     # Countdown before remedial
