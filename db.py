@@ -11,9 +11,10 @@ Base = declarative_base()
 class Student(Base):
     __tablename__ = "students"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String)
-    email = Column(String, unique=True, index=True)
-    class_code = Column(String)
+    name = Column(String(100))
+    email = Column(String(100), unique=True, index=True)
+    class_code = Column(String(20))
+    
     responses = relationship("Response", back_populates="student")
 
 class Response(Base):
