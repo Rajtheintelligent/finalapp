@@ -744,6 +744,11 @@ else:
 
     # --- Build PDF function ---
     def build_pdf_bytes(subject, subtopic_id, res, fig, ss):
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4)
         elements = []
@@ -761,7 +766,7 @@ else:
 
         # Insert chart
         if fig:
-            imbuf = io.BytesIO()
+            imgbuf = io.BytesIO()
             fig.savefig(imgbuf, format="PNG", bbox_inches='tight')
             imgbuf.seek(0)
             elements.append(Image(imgbuf, width=400, height=200))
@@ -784,7 +789,7 @@ else:
                 Paragraph(q["correct"], normal_style)
             ])
             
-        table = Table(table_data, colWidths=[50, 220, 120, 120])
+        table = Table(table_data, repeatRows=1, colWidths=[50, 220, 120, 120])
         table.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
             ('TEXTCOLOR',(0,0),(-1,0),colors.black),
@@ -795,6 +800,11 @@ else:
             ('GRID', (0,0), (-1,-1), 0.5, colors.black),
         ]))
         elements.append(table)
+        
+        earned = res.get("earned", 0)
+        total = res.get("total", 0)
+        elements.append(Spacer(1, 12))
+        elements.append(Paragraph(f"Score: {earned}/{total}", styles["Heading2"]))
 
         # Build document
         doc.build(elements)
