@@ -32,6 +32,9 @@ from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 # --- Email ---
 import smtplib
 from email.message import EmailMessage
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
 
 # --- Other utilities ---
 import base64
@@ -124,23 +127,25 @@ def send_report_to_student(to_email, pdf_bytes):
         server.send_message(msg)
         
 def send_report_to_parent(parent_email, pdf_bytes, student_name):
-    """
-    Send quiz report to parent via email.
-    """
-    msg = EmailMessage()
-    msg["Subject"] = f"Quiz Report for {student_name}"
-    msg["From"] = "noreply@myschool.com"
-    msg["To"] = parent_email
-    msg.set_content(
-        f"Dear Parent,\n\nAttached is the quiz performance report for {student_name}.\n\nRegards,\nMySchool"
-    )
-    
-    msg.add_attachment(pdf_bytes, maintype="application", subtype="pdf", filename="quiz_report.pdf")
+    from_email = st.secrets["smtp"]["from_email"]
+    password = st.secrets["smtp"]["password"]
 
-    smtp_cfg = st.secrets.get("smtp", {})
-    with smtplib.SMTP_SSL(smtp_cfg.get("server"), smtp_cfg.get("port")) as server:
-        server.login(smtp_cfg.get("user"), smtp_cfg.get("password"))
-        server.send_message(msg)
+    msg = MIMEMultipart()
+    msg["From"] = from_email
+    msg["To"] = to_email
+    msg["Subject"] = f"Quiz Report for {student_name}"
+
+    msg.attach(MIMEText("Please find attached the quiz report.", "plain"))
+
+    part = MIMEApplication(pdf_bytes, Name="report.pdf")
+    part["Content-Disposition"] = 'attachment; filename="report.pdf"'
+    msg.attach(part)
+
+    server = smtplib.SMTP("smtp.gmail.com", 587)
+    server.starttls()
+    server.login(from_email, password)
+    server.sendmail(from_email, to_email, msg.as_string())
+    server.quit()
 
 # --- Helpful utilities (small, robust) ---
 def get_params():
