@@ -59,9 +59,6 @@ if "remedial_answers" not in ss:
     ss["remedial_answers"] = {}
   
 def build_pdf_bytes(subject, subtopic_id, res, fig, ss):
-    """
-    Build a simple PDF report and return it as bytes.
-    """
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
@@ -69,8 +66,29 @@ def build_pdf_bytes(subject, subtopic_id, res, fig, ss):
     c.setFont("Helvetica-Bold", 16)
     c.drawString(100, height - 50, "Quiz Report")
 
+    # ✅ Use values from res dict
+    score = res.get("earned", 0)
+    total = res.get("total", 0)
     c.setFont("Helvetica", 12)
     c.drawString(100, height - 100, f"Score: {score}/{total}")
+
+    wrong_ids = res.get("wrong_ids", [])
+    if wrong_ids:
+        c.drawString(100, height - 130, "Incorrect Answers:")
+        y = height - 150
+        for q in res.get("questions", []):
+            if q["qid"] in wrong_ids:
+                qid = q["qid"]
+                qtext = q["question"][:60]
+                corr = q["correct"]
+                given = q["student"]
+                c.drawString(100, y, f"{qid}: {qtext} | Your: {given} | Correct: {corr}")
+                y -= 20
+
+    c.showPage()
+    c.save()
+    buffer.seek(0)
+    return buffer.getvalue()
 
     if wrong_table:
         c.drawString(100, height - 130, "Incorrect Answers:")
