@@ -8,6 +8,8 @@ import time
 import io
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
+# pages/form_page.py
+from db import SessionLocal, Student, Response
 
 # --- ReportLab (PDF generation) ---
 from reportlab.pdfgen import canvas
@@ -559,7 +561,18 @@ if not ss["main_submitted"]:
                     "correct": correct,
                     "student": given
                 })
-
+                # ✅ Save to PostgreSQL
+                save_response(
+                    student_name=ss["student_info"].get("StudentName", ""),
+                    email=ss["student_info"].get("StudentEmail", ""),    # or whatever key you store email under
+                    class_code=ss["student_info"].get("Tuition_Code", ""),
+                    subject=subject,
+                    subtopic=subtopic_id,
+                    qno=qid,
+                    s_ans=given,
+                    c_ans=correct
+                )
+                # (Optional: still keep append_response_row if you want CSV backup)
                 append_response_row(
                     datetime.now().isoformat(),
                     ss["student_info"].get("Student_ID", ""),
@@ -981,6 +994,34 @@ if ss.get("remedial_ready", False):
                     autotext.set_weight("bold")
 
                 st.pyplot(fig)
+# pages/form_page.py
+from db import SessionLocal, Student, Response
+
+def save_response(student_name, email, class_code, subject, subtopic, qno, s_ans, c_ans):
+    db = SessionLocal()
+    try:
+        # Find or create student
+        student = db.query(Student).filter_by(email=email).first()
+        if not student:
+            student = Student(name=student_name, email=email, class_code=class_code)
+            db.add(student)
+            db.commit()
+            db.refresh(student)
+
+        # Save response
+        response = Response(
+            student_id=student.id,
+            subject=subject,
+            subtopic=subtopic,
+            question_no=qno,
+            student_answer=s_ans,
+            correct_answer=c_ans,
+            is_correct=(s_ans == c_ans)
+        )
+        db.add(response)
+        db.commit()
+    finally:
+        db.close()
 
 
 
