@@ -14,3 +14,7 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
   "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/streamlit-form-reader%40sscmathsform.iam.gserviceaccount.com",
   "universe_domain": "googleapis.com"
 }
+[postgres]
+url = "postgresql://postgres:cKiBSKhUtSchctaQmvxYFMijWbWMwJpA@turntable.proxy.rlwy.net:42517/railway"
+
+
