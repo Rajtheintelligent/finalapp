@@ -57,3 +57,8 @@ def save_response(student_name, email, class_code, subject, subtopic, qno, s_ans
         db.commit()
     finally:
         db.close()
+
+# ⚠️ only run this once, then remove it!
+Base.metadata.drop_all(bind=engine, tables=[Response.__table__])
+Base.metadata.create_all(bind=engine)
+
