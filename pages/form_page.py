@@ -729,7 +729,7 @@ else:
             fig.savefig(imgbuf, format="PNG", bbox_inches='tight')
             imgbuf.seek(0)
             elements.append(Image(imgbuf, width=400, height=200))
-            elements.append(Spacer(1, 20)
+            elements.append(Spacer(1, 20))
 
         # Table data
         table_data = [
