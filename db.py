@@ -18,14 +18,16 @@ class Student(Base):
 
 class Response(Base):
     __tablename__ = "responses"
+    
     id = Column(Integer, primary_key=True, index=True)
     student_id = Column(Integer, ForeignKey("students.id"))
-    subject = Column(String)
-    subtopic = Column(String)
-    question_no = Column(String)
-    student_answer = Column(String)
-    correct_answer = Column(String)
+    subject = Column(String(100))
+    subtopic = Column(String(100))
+    question_no = Column(String(50))   # ✅ FIXED from Integer → String
+    student_answer = Column(String(255))
+    correct_answer = Column(String(255))
     is_correct = Column(Boolean)
+    
     student = relationship("Student", back_populates="responses")
 
 # --- create tables once at startup ---
