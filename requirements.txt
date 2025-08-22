@@ -5,3 +5,5 @@ oauth2client
 google-auth
 matplotlib
 reportlab
+sqlalchemy
+psycopg2-binary
