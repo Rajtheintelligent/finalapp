@@ -2,7 +2,7 @@ from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignK
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 import streamlit as st
 
-DATABASE_URL = st.secrets["postgres"]["url"]
+DATABASE_URL = st.secrets["db"]["url"]
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
