@@ -9,7 +9,7 @@ import io
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 # pages/form_page.py
-from db import SessionLocal, Student, Response
+from db import save_response
 
 # --- ReportLab (PDF generation) ---
 from reportlab.pdfgen import canvas
