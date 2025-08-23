@@ -25,7 +25,7 @@ except ImportError:
     st.warning("Auto-refresh not available — install streamlit-autorefresh")
 
 # ---------- Load Responses ----------
-DEMO_MODE = True   # 🔄 toggle True for testing without DB
+DEMO_MODE = False   # 🔄 toggle True for testing without DB
 
 def load_responses_demo(batch, subject, subtopic_id):
     """Demo placeholder data"""
