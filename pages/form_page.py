@@ -653,9 +653,10 @@ if mark_and_check_teacher_notified(tuition_code, subject, subtopic_id):
                         
 # ------------------ AFTER SUBMIT (REVIEW MODE) ------------------
 else:
-    res = ss["main_results"]
-    earned = res["earned"]
-    total = res["total"]
+    res = ss.get("main_results", {})
+    earned = res.get("earned", 0)
+    total = res.get("total", 0)
+
 
     st.markdown("### ✅ Main Quiz Review")
 
