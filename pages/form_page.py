@@ -677,9 +677,12 @@ else:
         else:
             st.error(f"❌ Your Answer: {student_ans}")
             st.info(f"✔️ Correct Answer: {correct_ans}")
-            
-                # Student's chosen option (highlight light green always)
-                if opt == q["correct"]:
+
+        # --- Show all options with highlighting ---
+        for opt in q.get("options", []):
+            if opt == student_ans:
+                if opt == correct_ans:
+                    # Student selected the correct option
                     st.markdown(
                         f"""
                         <div style='background-color: rgba(0,255,0,0.15); 
@@ -692,22 +695,24 @@ else:
                         unsafe_allow_html=True
                     )
                 else:
+                    # Student selected wrong option
                     st.markdown(
                         f"""
-                        <div style='background-color: rgba(0,255,0,0.15);
+                        <div style='background-color: rgba(255,0,0,0.15);
                                     padding:4px; border-radius:4px;
                                     display:flex; justify-content:space-between;'>
                             <span>{opt}</span>
-                            <span>❌ Incorrect</span>
+                            <span>❌ Your Choice</span>
                         </div>
                         """,
                         unsafe_allow_html=True
-                    )                        
-            elif opt == q["correct"]:
-                # Show correct answer but without background
+                    )
+            elif opt == correct_ans:
+                # Correct option (not chosen by student)
                 st.markdown(
                     f"""
-                    <div style='display:flex; justify-content:space-between;'>
+                    <div style='padding:4px; border-radius:4px;
+                                display:flex; justify-content:space-between;'>
                         <span>{opt}</span>
                         <span>✅ Correct</span>
                     </div>
@@ -715,11 +720,12 @@ else:
                     unsafe_allow_html=True
                 )
             else:
+                # Neutral option
                 st.markdown(f"<div>{opt}</div>", unsafe_allow_html=True)
 
         st.write("---")
 
-    st.success(f"Score: {earned}/{total}")
+    st.success(f"Final Score: {earned}/{total}")
 
     # ---------- FINAL COMBINED SUMMARY / GRAPH / PDF EXPORT / EMAIL ----------
     from matplotlib.ticker import MaxNLocator
