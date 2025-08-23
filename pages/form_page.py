@@ -619,6 +619,10 @@ if not ss["main_submitted"]:
                 "questions": question_results
             }
             ss["main_submitted"] = True
+            # ✅ ensure remedial doesn’t start immediately on the same run
+            ss["remedial_ready"] = False  
+            ss["remedial_pending"] = True
+            st.rerun()   # force a rerun so review loads first
 
             # --- Auto-send PDF to Parent ---
             try:
@@ -839,24 +843,29 @@ else:
             st.success("📧 Report sent to your email.")
     
 # ---------- REMEDIAL (shows below main, main stays visible) ----------
-if ss.get("main_submitted", False) and ss.get("main_results", {}).get("wrong_ids"):
-    # Countdown before remedial
-    if "remedial_ready" not in ss:
-        # Show info once, but don't block with sleep
-        st.info("Please review your incorrect answers above. Remedial will load shortly...")
-        # mark a timestamp
-        ss["remedial_start"] = datetime.now().timestamp()
-        ss["remedial_ready"] = False
-    else:
-        # check how many seconds passed since we set remedial_start
-        elapsed = datetime.now().timestamp() - ss.get("remedial_start", 0)
-        if elapsed >= 20:  # 20 sec wait
-            ss["remedial_ready"] = True
-        else:
-            st.info(f"Please review your incorrect answers above. Remedial will load in {20 - int(elapsed)} seconds...")
+# ✅ Only render Remedial Quiz UI after countdown finished
+if ss.get("remedial_ready", False):
     st.header("Remedial Quiz")
 
     wrong_ids = ss["main_results"].get("wrong_ids", [])
+    if "MainQuestionID" not in remedial_df.columns:
+        st.info("Remedial sheet missing 'MainQuestionID' column.")
+    else:
+        rem_set = remedial_df[
+            remedial_df["MainQuestionID"].astype(str).str.strip().isin(wrong_ids)
+        ].copy()
+
+        if rem_set.empty:
+            st.info("No remedial questions found for these misses.")
+        else:
+            ss.setdefault("remedial_answers", {})
+            ss.setdefault("remedial_submitted", False)
+
+            if not ss["remedial_submitted"]:
+                # ---------- INPUT MODE ----------
+                with st.form("remedial_form"):
+                    ...
+
     if "MainQuestionID" not in remedial_df.columns:
         st.info("Remedial sheet missing 'MainQuestionID' column.")
     else:
