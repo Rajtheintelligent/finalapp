@@ -661,26 +661,25 @@ try:
 except Exception as e:
     st.warning(f"Could not send parent report: {e}")
 
-# 2) Always notify teacher with live dashboard link (TEST MODE)
+# --- FORCE teacher email every submission (for testing) ---
 try:
     teacher_email = ss["student_info"].get("TeacherEmail", "")
     if teacher_email:
-        APP_URL = "https://nagaraj11.streamlit.app"  # <-- replace later with actual link
-        page_param = "teacher_dashboard"
-        dashboard_link = (
-            f"{APP_URL}/?page={page_param.replace(' ', '%20')}"
-            f"&batch={ss['student_info'].get('Tuition_Code','')}"
-            f"&subject={subject}&subtopic_id={subtopic_id}"
-        )
+        APP_URL = "https://nagaraj11.streamlit.app"  # replace later
+        dashboard_link = f"{APP_URL}/?page=teacher_dashboard&batch={ss['student_info'].get('Tuition_Code','')}&subject={subject}&subtopic_id={subtopic_id}"
+
         send_email_simple(
             teacher_email,
             f"🔗 Test Dashboard Link — {subject} ({subtopic_id})",
-            "This is a test email.\n\n"
+            "This is a TEST email.\n\n"
             f"Dashboard link:\n{dashboard_link}"
         )
-        st.info(f"📧 Test email sent to teacher: {teacher_email}")
+        st.success(f"📧 Sent test dashboard link to teacher: {teacher_email}")
+    else:
+        st.error("⚠️ No Teacher Email found in Register sheet.")
 except Exception as e:
-    st.warning(f"Could not notify teacher (test): {e}")
+    st.error(f"❌ Could not send teacher test email: {e}")
+
 
 
 # 2) Notify Teacher ONCE with live dashboard link
