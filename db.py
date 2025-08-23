@@ -1,7 +1,7 @@
 # db.py
-import psycopg2
-from psycopg2.extras import execute_values
-from .connection import get_connection  # however you currently connect
+#import psycopg2
+#from psycopg2.extras import execute_values
+#from .connection import get_connection  # however you currently connect
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 import streamlit as st
