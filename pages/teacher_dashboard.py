@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import io
+streamlit-autorefresh
 
 from db import get_batch_performance  # ✅ import your DB query
 
@@ -9,7 +10,7 @@ from db import get_batch_performance  # ✅ import your DB query
 st.set_page_config(page_title="Teacher Dashboard", layout="wide")
 
 # ---------- Query Params ----------
-params = st.experimental_get_query_params()
+params = st.query_params
 batch = params.get("batch", [""])[0]
 subject = params.get("subject", [""])[0]
 subtopic_id = params.get("subtopic_id", [""])[0]
