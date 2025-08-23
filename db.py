@@ -5,6 +5,7 @@
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 import streamlit as st
+import pandas as pd
 
 DATABASE_URL = st.secrets["db"]["url"]
 
