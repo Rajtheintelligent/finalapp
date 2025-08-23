@@ -10,10 +10,6 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 # pages/form_page.py
 from db import save_response
-import psycopg2
-from psycopg2.extras import execute_values
-from .connection import get_connection  # however you currently connect
-
 # --- ReportLab (PDF generation) ---
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
@@ -44,9 +40,6 @@ import base64
 import random
 import hashlib
 import requests
-
-
-
 # ---------- CONFIG / SETUP ----------
 st.set_page_config(page_title="Quiz Form", layout="centered")
 
