@@ -33,6 +33,8 @@ class Response(Base):
     correct_answer = Column(String(255))
     is_correct = Column(Boolean)
 
+    student = relationship("Student", back_populates="responses")  # ✅ put it here
+
 class DashboardNotify(Base):
     __tablename__ = "dashboard_notify"
     id = Column(Integer, primary_key=True, index=True)
@@ -40,8 +42,6 @@ class DashboardNotify(Base):
     subject = Column(String(100))
     subtopic = Column(String(100))
     notified = Column(Boolean, default=False)
-
-    student = relationship("Student", back_populates="responses")
 
 # --- create tables once at startup ---
 Base.metadata.create_all(bind=engine)
