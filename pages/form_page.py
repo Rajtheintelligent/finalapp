@@ -865,11 +865,6 @@ if ss.get("remedial_ready", False):
             ss.setdefault("remedial_answers", {})
             ss.setdefault("remedial_submitted", False)
 
-            if not ss["remedial_submitted"]:
-                # ---------- INPUT MODE ----------
-                with st.form("remedial_form"):
-                    ...
-
     if "MainQuestionID" not in remedial_df.columns:
         st.info("Remedial sheet missing 'MainQuestionID' column.")
     else:
