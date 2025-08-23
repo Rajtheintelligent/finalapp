@@ -558,6 +558,8 @@ if not ss["main_submitted"]:
             earned_marks = 0
             wrong_ids = []
             question_results = []
+            # ✅ initialize bulk insert container
+            bulk_rows = []
 
             for _, q in main_questions.iterrows():
                 qid     = str(q.get("QuestionID","")).strip()
@@ -595,6 +597,8 @@ if not ss["main_submitted"]:
                         given,
                         correct
                 ))
+                
+            # ✅ save all in one go after loop    
             if bulk_rows:
                 from db import save_bulk_responses
                 save_bulk_responses(bulk_rows)
