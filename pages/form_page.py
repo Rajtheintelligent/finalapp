@@ -10,6 +10,9 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 # pages/form_page.py
 from db import save_response
+import psycopg2
+from psycopg2.extras import execute_values
+from .connection import get_connection  # however you currently connect
 
 # --- ReportLab (PDF generation) ---
 from reportlab.pdfgen import canvas
@@ -41,6 +44,7 @@ import base64
 import random
 import hashlib
 import requests
+
 
 
 # ---------- CONFIG / SETUP ----------
@@ -574,7 +578,7 @@ if not ss["main_submitted"]:
                 earned_marks += awarded
                 if awarded == 0:
                     wrong_ids.append(qid)
-
+                    
                 question_results.append({
                     "qid": qid,
                     "question": qtext,
@@ -584,25 +588,31 @@ if not ss["main_submitted"]:
                     "correct": correct,
                     "student": given
                 })
-                # ✅ Save to PostgreSQL
-                save_response(
-                    student_name=ss["student_info"].get("StudentName", ""),
-                    email=ss["student_info"].get("StudentEmail", ""),    # or whatever key you store email under
-                    class_code=ss["student_info"].get("Tuition_Code", ""),
-                    subject=subject,
-                    subtopic=subtopic_id,
-                    qno=qid,
-                    s_ans=given,
-                    c_ans=correct
-                )
+                    
+                
+                # ✅ add to bulk insert list in SQL
+                bulk_rows.append((
+                        ss["student_info"].get("StudentName", ""),
+                        ss["student_info"].get("StudentEmail", ""),
+                        ss["student_info"].get("Tuition_Code", ""),
+                        subject,
+                        subtopic_id,
+                        qid,
+                        given,
+                        correct
+                ))
+            if bulk_rows:
+                from db import save_bulk_responses
+                save_bulk_responses(bulk_rows)
+                
                 # (Optional: still keep append_response_row if you want CSV backup)
-                append_response_row(
-                    datetime.now().isoformat(),
-                    ss["student_info"].get("Student_ID", ""),
-                    ss["student_info"].get("StudentName", ""),
-                    ss["student_info"].get("Tuition_Code", ""),
-                    subject, subtopic_id, qid, given, correct, awarded, "Main"
-                )
+#                append_response_row(
+#                    datetime.now().isoformat(),
+#                    ss["student_info"].get("Student_ID", ""),
+#                    ss["student_info"].get("StudentName", ""),
+#                    ss["student_info"].get("Tuition_Code", ""),
+#                    subject, subtopic_id, qid, given, correct, awarded, "Main"
+#                )
 
             ss["main_results"] = {
                 "total": total_marks,
@@ -834,14 +844,18 @@ else:
 if ss.get("main_submitted", False) and ss.get("main_results", {}).get("wrong_ids"):
     # Countdown before remedial
     if "remedial_ready" not in ss:
-        placeholder = st.empty()
-        for i in range(20, 0, -1):
-            placeholder.info(f"Please review your incorrect answers above. Remedial will load in {i} seconds...")
-            time.sleep(1)
-        placeholder.empty()
-        ss["remedial_ready"] = True
-
-if ss.get("remedial_ready", False):
+        # Show info once, but don't block with sleep
+        st.info("Please review your incorrect answers above. Remedial will load shortly...")
+        # mark a timestamp
+        ss["remedial_start"] = datetime.now().timestamp()
+        ss["remedial_ready"] = False
+    else:
+        # check how many seconds passed since we set remedial_start
+        elapsed = datetime.now().timestamp() - ss.get("remedial_start", 0)
+        if elapsed >= 20:  # 20 sec wait
+            ss["remedial_ready"] = True
+        else:
+            st.info(f"Please review your incorrect answers above. Remedial will load in {20 - int(elapsed)} seconds...")
     st.header("Remedial Quiz")
 
     wrong_ids = ss["main_results"].get("wrong_ids", [])
