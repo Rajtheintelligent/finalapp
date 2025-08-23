@@ -638,7 +638,7 @@ if not ss["main_submitted"]:
 if mark_and_check_teacher_notified(tuition_code, subject, subtopic_id):
     # Build dashboard link
     dashboard_link = (
-        f"https://your-app-url/teacher_dashboard"
+        f"https://nagaraj11.streamlit.app/teacher_dashboard"
         f"?batch={tuition_code}&subject={subject}&subtopic_id={subtopic_id}"
     )
                         
