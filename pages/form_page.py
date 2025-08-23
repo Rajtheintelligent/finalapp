@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 # pages/form_page.py
 from db import save_bulk_responses
-
+from db import mark_and_check_teacher_notified
 # --- ReportLab (PDF generation) ---
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
@@ -633,7 +633,24 @@ if not ss["main_submitted"]:
                     send_report_to_parent(parent_email, pdf_bytes, student_name)
             except Exception as e:
                 st.warning(f"Could not send parent report: {e}")
-
+                
+            # ------------------ TEACHER NOTIFICATION ------------------
+if mark_and_check_teacher_notified(tuition_code, subject, subtopic_id):
+    # Build dashboard link
+    dashboard_link = (
+        f"https://your-app-url/teacher_dashboard"
+        f"?batch={tuition_code}&subject={subject}&subtopic_id={subtopic_id}"
+    )
+                        
+    teacher_email = ss["student_info"].get("Teacher_Email", "")
+    if teacher_email:
+        send_email(
+            to=teacher_email,
+            subject=f"Live Dashboard Link — {subject} ({subtopic_id})",
+            body=f"A student has submitted the quiz.\n\n"
+                 f"You can view the live dashboard here:\n{dashboard_link}"
+        )
+                        
 # ------------------ AFTER SUBMIT (REVIEW MODE) ------------------
 else:
     res = ss["main_results"]
