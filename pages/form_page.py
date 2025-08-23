@@ -671,7 +671,7 @@ try:
             page_param = "teacher_dashboard"             # exactly as the page appears in the sidebar
             
             dashboard_link = (
-                f"{https://nagaraj11.streamlit.app/teacher_dashboard}/?page={page_param.replace(' ', '%20')}"
+                f"{APP_URL}/?page={page_param.replace(' ', '%20')}"
                 f"&batch={tuition_code_for_db}&subject={subject}&subtopic_id={subtopic_id}"
             )
             send_email_simple(
