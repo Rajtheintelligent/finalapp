@@ -659,15 +659,25 @@ else:
 
 
     st.markdown("### ✅ Main Quiz Review")
+    st.caption(f"Score: {earned}/{total}")
 
-    for q in res["questions"]:
-        st.markdown(f"**Q{q['qid']}**")   # Question number on its own line
-        st.markdown(q["question"])        # Question text below it
-        if q["image"]:
+    for q in res.get("questions", []):   # ✅ Safe default: empty list
+        qid = q.get("qid", "")
+        st.markdown(f"**Q{qid}**")  # Question number
+        
+        st.markdown(q.get("question", ""))  # Question text
+        if q.get("image"):
             st.image(q["image"], use_container_width=True)
+        # show student answer
+        student_ans = q.get("student_ans", "")
+        correct_ans = q.get("correct_ans", "")
 
-        for opt in q["options"]:
-            if opt == q["student"]:
+        if student_ans == correct_ans:
+            st.success(f"✅ Your Answer: {student_ans}")
+        else:
+            st.error(f"❌ Your Answer: {student_ans}")
+            st.info(f"✔️ Correct Answer: {correct_ans}")
+            
                 # Student's chosen option (highlight light green always)
                 if opt == q["correct"]:
                     st.markdown(
