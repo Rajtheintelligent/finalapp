@@ -131,8 +131,9 @@ def send_report_to_student(to_email, pdf_bytes):
 
     # Uses st.secrets["smtp"] values
     smtp_cfg = st.secrets.get("smtp", {})
-    with smtplib.SMTP_SSL(smtp_cfg.get("server"), smtp_cfg.get("port")) as server:
-        server.login(smtp_cfg.get("user"), smtp_cfg.get("password"))
+    with smtplib.SMTP(smtp_cfg.get("server"), int(smtp_cfg.get("port"))) as server:
+        server.starttls()
+        server.login(smtp_cfg.get("username"), smtp_cfg.get("password"))
         server.send_message(msg)
         
 def send_report_to_parent(parent_email, pdf_bytes, student_name):
@@ -169,7 +170,7 @@ def send_email_simple(to, subject, body):
     msg.set_content(body)
 
     with smtplib.SMTP_SSL(smtp_cfg.get("server"), smtp_cfg.get("port")) as server:
-        server.login(smtp_cfg.get("user"), smtp_cfg.get("password"))
+        server.login(smtp_cfg.get("username"), smtp_cfg.get("password"))
         server.send_message(msg)
 
 # --- Helpful utilities (small, robust) ---
