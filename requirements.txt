@@ -7,3 +7,4 @@ matplotlib
 reportlab
 sqlalchemy
 psycopg2-binary
+streamlit-autorefresh
