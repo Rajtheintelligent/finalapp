@@ -731,9 +731,13 @@ else:
     from matplotlib.ticker import MaxNLocator
 
     # --- Data ---
-    total_q = len(res["questions"])
-    incorrect_q = len(res["wrong_ids"])
-    correct_q = total_q - incorrect_q
+    questions = res.get("questions", [])
+    wrong_ids = res.get("wrong_ids", [])
+
+    total_q = len(questions)
+    incorrect_q = len(wrong_ids)
+    correct_q = total_q - incorrect_q if total_q > 0 else 0
+
 
     # --- Theme-aware colors ---
     base   = st.get_option("theme.base") or "light"
