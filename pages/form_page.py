@@ -132,7 +132,7 @@ def send_report_to_parent(parent_email, pdf_bytes, student_name):
 
     msg = MIMEMultipart()
     msg["From"] = from_email
-    msg["To"] = to_email
+    msg["To"] = parent_email
     msg["Subject"] = f"Quiz Report for {student_name}"
 
     msg.attach(MIMEText("Please find attached the quiz report.", "plain"))
@@ -144,7 +144,7 @@ def send_report_to_parent(parent_email, pdf_bytes, student_name):
     server = smtplib.SMTP("smtp.gmail.com", 587)
     server.starttls()
     server.login(from_email, password)
-    server.sendmail(from_email, to_email, msg.as_string())
+    server.sendmail(from_email, parent_email, msg.as_string())
     server.quit()
 
 # --- Helpful utilities (small, robust) ---
