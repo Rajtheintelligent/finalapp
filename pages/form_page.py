@@ -161,7 +161,6 @@ def send_report_to_parent(parent_email, pdf_bytes, student_name):
 def send_email_simple(to, subject, body):
     """
     Send a plain text email (used for teacher dashboard link notification).
-    Uses TLS on port 587 and the 'username' key from secrets.
     """
     smtp_cfg = st.secrets.get("smtp", {})
     msg = EmailMessage()
@@ -170,10 +169,9 @@ def send_email_simple(to, subject, body):
     msg["To"] = to
     msg.set_content(body)
 
-    with smtplib.SMTP(smtp_cfg.get("server"), int(smtp_cfg.get("port", 587))) as server:
-        server.ehlo()
+    with smtplib.SMTP(smtp_cfg.get("server"), smtp_cfg.get("port")) as server:
         server.starttls()
-        server.login(smtp_cfg.get("username"), smtp_cfg.get("password"))
+        server.login(smtp_cfg.get("username"), smtp_cfg.get("password"))  # ✅ FIXED
         server.send_message(msg)
 
 # --- Helpful utilities (small, robust) ---
