@@ -709,9 +709,9 @@ if ss.get("main_submitted", False):
             elif opt == student_ans:
                 st.markdown("<div style='background-color: rgba(255,0,0,0.15); padding:4px; border-radius:4px;'>❌ " + opt + "</div>", unsafe_allow_html=True)
             elif opt == correct_ans:
-                st.markdown("<div>✅ " + opt + "</div>", unsafe_allow_html=True)
+                st.markdown(f"<div>✅ {opt}</div>", unsafe_allow_html=True)
             else:
-                st.markdown("<div>" + opt + "</div>", unsafe_allow_html=True)
+                st.markdown(f"<div>{opt}</div>", unsafe_allow_html=True)
 
         st.write("---")
 
