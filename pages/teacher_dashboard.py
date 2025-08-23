@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import io
-streamlit-autorefresh
 
 from db import get_batch_performance  # ✅ import your DB query
 
