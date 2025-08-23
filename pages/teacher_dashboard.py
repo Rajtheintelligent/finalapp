@@ -19,11 +19,25 @@ st.title(f"📊 Live Dashboard — {subject} ({subtopic_id})")
 st.caption(f"Showing results for batch: {batch}")
 
 # ---------- Autorefresh ----------
+# prefer the package when available, otherwise fall back to a tiny timer-based rerun
 try:
+    # correct import name uses underscore, not dash
     from streamlit_autorefresh import st_autorefresh
-    st_autorefresh(interval=5000, key="data_refresh")  # refresh every 5s
-except ImportError:
-    st.warning("Auto-refresh not available — install streamlit-autorefresh")
+    # call it (interval is milliseconds)
+    st_autorefresh(interval=5000, key="data_refresh")
+except Exception:
+    # fallback if the package isn't installed or import fails
+    import time
+    # create/initialize last_refresh timestamp
+    if "last_refresh" not in st.session_state:
+        st.session_state["last_refresh"] = time.time()
+    # small interval in seconds
+    _interval_seconds = 5
+    if time.time() - st.session_state["last_refresh"] > _interval_seconds:
+        st.session_state["last_refresh"] = time.time()
+        # this causes Streamlit to rerun — works as a simple auto-refresh fallback
+        st.experimental_rerun()
+
 
 # ---------- Load Responses ----------
 DEMO_MODE = False   # 🔄 toggle True for testing without DB
