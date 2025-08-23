@@ -161,6 +161,7 @@ def send_report_to_parent(parent_email, pdf_bytes, student_name):
 def send_email_simple(to, subject, body):
     """
     Send a plain text email (used for teacher dashboard link notification).
+    Uses TLS on port 587 and the 'username' key from secrets.
     """
     smtp_cfg = st.secrets.get("smtp", {})
     msg = EmailMessage()
@@ -169,7 +170,9 @@ def send_email_simple(to, subject, body):
     msg["To"] = to
     msg.set_content(body)
 
-    with smtplib.SMTP_SSL(smtp_cfg.get("server"), smtp_cfg.get("port")) as server:
+    with smtplib.SMTP(smtp_cfg.get("server"), int(smtp_cfg.get("port", 587))) as server:
+        server.ehlo()
+        server.starttls()
         server.login(smtp_cfg.get("username"), smtp_cfg.get("password"))
         server.send_message(msg)
 
@@ -666,9 +669,12 @@ try:
     if mark_and_check_teacher_notified(tuition_code_for_db, subject, subtopic_id):
         teacher_email = ss["student_info"].get("TeacherEmail", "")  # <- correct key
         if teacher_email:
+            APP_URL = "https://nagaraj11.streamlit.app"  # <-- put your real app base URL here once
+            page_param = "teacher_dashboard"             # exactly as the page appears in the sidebar
+            
             dashboard_link = (
-                "https://nagaraj11.streamlit.app/teacher_dashboard"
-                f"?batch={tuition_code_for_db}&subject={subject}&subtopic_id={subtopic_id}"
+                f"{APP_URL}/?page={page_param.replace(' ', '%20')}"
+                f"&batch={tuition_code_for_db}&subject={subject}&subtopic_id={subtopic_id}"
             )
             send_email_simple(
                 teacher_email,
