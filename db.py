@@ -68,5 +68,78 @@ def save_bulk_responses(rows):
     finally:
         db.close()
 
+# --- Dashboard query function ---
+def get_batch_performance(batch_code: str, subject: str, subtopic: str):
+    """
+    Returns a DataFrame with each student's performance (correct/incorrect counts).
+    """
+    db = SessionLocal()
+    try:
+        # join students + responses
+        query = (
+            db.query(
+                Student.name.label("Student_Name"),
+                Student.email.label("Student_Email"),
+                Student.class_code.label("Tuition_Code"),
+                Response.subject,
+                Response.subtopic,
+                Response.is_correct
+            )
+            .join(Response, Student.id == Response.student_id)
+            .filter(
+                Student.class_code == batch_code,
+                Response.subject == subject,
+                Response.subtopic == subtopic
+            )
+        )
+        rows = query.all()
+
+        if not rows:
+            return pd.DataFrame()
+
+        # Convert to DataFrame
+        df = pd.DataFrame(rows, columns=[
+            "Student_Name", "Student_Email", "Tuition_Code", "Subject", "Subtopic", "is_correct"
+        ])
+
+        # Aggregate correct vs incorrect
+        perf = (
+            df.groupby(["Student_Name", "Student_Email"])
+              .agg(Correct=("is_correct", lambda x: x.sum()),
+                   Incorrect=("is_correct", lambda x: (~x).sum()))
+              .reset_index()
+        )
+        return perf
+
+    finally:
+        db.close()
+        
+def get_student_responses(student_email: str, subject: str, subtopic: str):
+    """
+    Returns all responses for a specific student in a given subject & subtopic.
+    """
+    db = SessionLocal()
+    try:
+        query = (
+            db.query(
+                Response.question_no,
+                Response.student_answer,
+                Response.correct_answer,
+                Response.is_correct
+            )
+            .join(Student, Student.id == Response.student_id)
+            .filter(
+                Student.email == student_email,
+                Response.subject == subject,
+                Response.subtopic == subtopic
+            )
+        )
+        rows = query.all()
+        return pd.DataFrame(rows, columns=["Question_No", "Student_Answer", "Correct_Answer", "Is_Correct"])
+    finally:
+        db.close()
+
+
+
 
 
