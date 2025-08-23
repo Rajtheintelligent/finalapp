@@ -841,6 +841,10 @@ else:
         else:
             send_report_to_student(student_email, pdf_bytes)
             st.success("📧 Report sent to your email.")
+    if ss.get("main_submitted", False) and ss.get("remedial_pending", False):
+        ss["remedial_ready"] = True
+        ss["remedial_pending"] = False
+        st.rerun()
     
 # ---------- REMEDIAL (shows below main, main stays visible) ----------
 # ✅ Only render Remedial Quiz UI after countdown finished
