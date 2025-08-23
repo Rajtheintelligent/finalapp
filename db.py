@@ -12,14 +12,6 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
-class DashboardNotify(Base):
-    __tablename__ = "dashboard_notify"
-    id = Column(Integer, primary_key=True, index=True)
-    batch_code = Column(String(20))
-    subject = Column(String(100))
-    subtopic = Column(String(100))
-    notified = Column(Boolean, default=False)
-
 class Student(Base):
     __tablename__ = "students"
     id = Column(Integer, primary_key=True, index=True)
@@ -40,7 +32,15 @@ class Response(Base):
     student_answer = Column(String(255))
     correct_answer = Column(String(255))
     is_correct = Column(Boolean)
-    
+
+class DashboardNotify(Base):
+    __tablename__ = "dashboard_notify"
+    id = Column(Integer, primary_key=True, index=True)
+    batch_code = Column(String(20))
+    subject = Column(String(100))
+    subtopic = Column(String(100))
+    notified = Column(Boolean, default=False)
+
     student = relationship("Student", back_populates="responses")
 
 # --- create tables once at startup ---
@@ -148,6 +148,10 @@ def get_student_responses(student_email: str, subject: str, subtopic: str):
         db.close()
 
 def mark_and_check_teacher_notified(batch_code, subject, subtopic):
+    """
+    Returns True if this is the first submission (notified just now).
+    Returns False if teacher was already notified.
+    """
     db = SessionLocal()
     try:
         entry = db.query(DashboardNotify).filter_by(
@@ -155,8 +159,10 @@ def mark_and_check_teacher_notified(batch_code, subject, subtopic):
             subject=subject,
             subtopic=subtopic
         ).first()
+        
         if entry:
             return False  # already notified
+            
         new_entry = DashboardNotify(
             batch_code=batch_code,
             subject=subject,
