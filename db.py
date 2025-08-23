@@ -1,3 +1,7 @@
+# db.py
+import psycopg2
+from psycopg2.extras import execute_values
+from .connection import get_connection  # however you currently connect
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 import streamlit as st
@@ -34,28 +38,35 @@ class Response(Base):
 # --- create tables once at startup ---
 Base.metadata.create_all(bind=engine)
 
-def save_response(student_name, email, class_code, subject, subtopic, qno, s_ans, c_ans):
+def save_bulk_responses(rows):
+    """
+    rows = list of dicts or tuples with student info and answers
+    """
     db = SessionLocal()
     try:
-        student = db.query(Student).filter_by(email=email).first()
-        if not student:
-            student = Student(name=student_name, email=email, class_code=class_code)
-            db.add(student)
-            db.commit()
-            db.refresh(student)
+        # ORM-friendly: we must link responses to a Student
+        responses = []
+        for (student_name, email, class_code, subject, subtopic, qno, s_ans, c_ans) in rows:
+            student = db.query(Student).filter_by(email=email).first()
+            if not student:
+                student = Student(name=student_name, email=email, class_code=class_code)
+                db.add(student)
+                db.commit()
+                db.refresh(student)
 
-        response = Response(
-            student_id=student.id,
-            subject=subject,
-            subtopic=subtopic,
-            question_no=qno,
-            student_answer=s_ans,
-            correct_answer=c_ans,
-            is_correct=(s_ans == c_ans)
-        )
-        db.add(response)
+            responses.append(Response(
+                student_id=student.id,
+                subject=subject,
+                subtopic=subtopic,
+                question_no=qno,
+                student_answer=s_ans,
+                correct_answer=c_ans,
+                is_correct=(s_ans == c_ans)
+            ))
+        db.bulk_save_objects(responses)
         db.commit()
     finally:
         db.close()
+
 
 
