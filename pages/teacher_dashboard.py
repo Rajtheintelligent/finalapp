@@ -121,3 +121,117 @@ pdf_bytes = build_pdf(df)
 st.download_button("⬇️ Download PDF", pdf_bytes,
                    file_name=f"{batch}_{subtopic_id}_report.pdf",
                    mime="application/pdf")
+# ============================================================
+# 🔍 Student Drill-Down Section
+# ============================================================
+
+st.subheader("🔍 Student Drill-Down")
+
+col1, col2, col3 = st.columns([2,2,1])
+with col1:
+    student_id_input = st.text_input("Enter Student ID")
+with col2:
+    subject_choice = st.selectbox("Select Subject", 
+                                  ["Geometry", "Algebra", "Science1", "Science2", "English"])
+with col3:
+    submit_btn = st.button("Enter")
+
+if submit_btn and student_id_input and subject_choice:
+    try:
+        # Query all subtopics for this student/subject
+        df_student = get_batch_performance(batch, subject_choice, None)
+        df_student = df_student[df_student["Student_ID"] == student_id_input]
+
+        if df_student.empty:
+            st.warning("No records found for this student.")
+        else:
+            # Build summary: one row per subtopic
+            summary = (
+                df_student.groupby("Subtopic_ID")
+                .agg({"Correct":"sum","Incorrect":"sum"})
+                .reset_index()
+            )
+            summary["Total"] = summary["Correct"] + summary["Incorrect"]
+
+            # 📊 Horizontal stacked bar chart
+            fig_height = max(3, len(summary) * 0.6)
+            fig, ax = plt.subplots(figsize=(8, fig_height))
+
+            bars_c = ax.barh(summary["Subtopic_ID"], summary["Correct"], 
+                             color="#4CAF50", label="Correct")
+            bars_i = ax.barh(summary["Subtopic_ID"], summary["Incorrect"], 
+                             left=summary["Correct"], color="#E53935", label="Incorrect")
+
+            for i, (c, ic) in enumerate(zip(summary["Correct"], summary["Incorrect"])):
+                if c > 0:
+                    ax.text(c/2, i, str(c), ha="center", va="center", color="white", fontsize=9, weight="bold")
+                if ic > 0:
+                    ax.text(c+c/2, i, str(ic), ha="center", va="center", color="white", fontsize=9, weight="bold")
+
+            ax.set_xlabel("Number of Questions")
+            ax.set_ylabel("Subtopics")
+            ax.set_title(f"Performance of {student_id_input} in {subject_choice}", weight="bold")
+            ax.legend()
+            plt.tight_layout()
+
+            st.pyplot(fig, use_container_width=True)
+
+            # ----------------- Downloads -----------------
+            st.subheader("⬇️ Download Reports")
+
+            # CSV
+            csv_bytes = summary.to_csv(index=False).encode("utf-8")
+            st.download_button("Download CSV", csv_bytes,
+                               file_name=f"{student_id_input}_{subject_choice}_report.csv",
+                               mime="text/csv")
+
+            # Excel
+            import pandas as pd
+            import io
+            excel_buffer = io.BytesIO()
+            with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
+                summary.to_excel(writer, index=False, sheet_name="Report")
+            excel_buffer.seek(0)
+            st.download_button("Download Excel", excel_buffer,
+                               file_name=f"{student_id_input}_{subject_choice}_report.xlsx",
+                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+            # PDF
+            def build_student_pdf(df, student_id, subject_choice):
+                buffer = io.BytesIO()
+                from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+                from reportlab.lib.pagesizes import A4
+                from reportlab.lib import colors
+                from reportlab.lib.styles import getSampleStyleSheet
+                styles = getSampleStyleSheet()
+
+                doc = SimpleDocTemplate(buffer, pagesize=A4)
+                elements = []
+
+                elements.append(Paragraph(f"Performance Report: {student_id} — {subject_choice}", styles["Title"]))
+                elements.append(Spacer(1, 12))
+
+                table_data = [["Subtopic", "Correct", "Incorrect", "Total"]]
+                for _, row in df.iterrows():
+                    table_data.append([row["Subtopic_ID"], row["Correct"], row["Incorrect"], row["Total"]])
+
+                table = Table(table_data, repeatRows=1)
+                table.setStyle(TableStyle([
+                    ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+                    ("GRID", (0,0), (-1,-1), 0.5, colors.black),
+                    ("ALIGN", (1,1), (-1,-1), "CENTER"),
+                ]))
+                elements.append(table)
+
+                doc.build(elements)
+                buffer.seek(0)
+                return buffer.read()
+
+            pdf_bytes = build_student_pdf(summary, student_id_input, subject_choice)
+            st.download_button("Download PDF", pdf_bytes,
+                               file_name=f"{student_id_input}_{subject_choice}_report.pdf",
+                               mime="application/pdf")
+
+    except Exception as e:
+        st.error(f"Error while fetching student data: {e}")
+
