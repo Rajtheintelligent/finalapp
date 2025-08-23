@@ -58,54 +58,65 @@ if "main_results" not in ss:
     ss["main_results"] = {}
 if "remedial_answers" not in ss:
     ss["remedial_answers"] = {}
-  
+    
 def build_pdf_bytes(subject, subtopic_id, res, fig, ss):
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
     buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A4)
-    width, height = A4
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    elements = []
+    styles = getSampleStyleSheet()
+    normal = ParagraphStyle("NormalUnicode", parent=styles["Normal"], fontName="Helvetica", fontSize=10)
 
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(100, height - 50, "Quiz Report")
+    # Title + who/when
+    info = ss.get("student_info", {})
+    elements.append(Paragraph(f"Quiz Report: {subject} — {subtopic_id}", styles["Title"]))
+    elements.append(Paragraph(f"Student: {info.get('StudentName','Unknown')} ({info.get('Student_ID','')})", styles["Normal"]))
+    from datetime import datetime
+    elements.append(Paragraph(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles["Normal"]))
+    elements.append(Spacer(1, 12))
 
-    # ✅ Use values from res dict
-    score = res.get("earned", 0)
-    total = res.get("total", 0)
-    c.setFont("Helvetica", 12)
-    c.drawString(100, height - 100, f"Score: {score}/{total}")
+    # Chart (if provided)
+    if fig:
+        chart_buf = io.BytesIO()
+        fig.savefig(chart_buf, format="PNG", bbox_inches="tight")
+        chart_buf.seek(0)
+        elements.append(Image(chart_buf, width=400, height=200))
+        elements.append(Spacer(1, 16))
 
-    wrong_ids = res.get("wrong_ids", [])
-    if wrong_ids:
-        c.drawString(100, height - 130, "Incorrect Answers:")
-        y = height - 150
-        for q in res.get("questions", []):
-            if q["qid"] in wrong_ids:
-                qid = q["qid"]
-                qtext = q["question"][:60]
-                corr = q["correct"]
-                given = q["student"]
-                c.drawString(100, y, f"{qid}: {qtext} | Your: {given} | Correct: {corr}")
-                y -= 20
+    # Q/A table
+    table_data = [[
+        Paragraph("Q.No", normal),
+        Paragraph("Question", normal),
+        Paragraph("Your Answer", normal),
+        Paragraph("Correct Answer", normal),
+    ]]
+    for q in res.get("questions", []):
+        table_data.append([
+            Paragraph(str(q.get("qid","")), normal),
+            Paragraph(str(q.get("question","")), normal),
+            Paragraph(str(q.get("student","")), normal),
+            Paragraph(str(q.get("correct","")), normal),
+        ])
+    table = Table(table_data, repeatRows=1, colWidths=[50, 220, 120, 120])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('FONTSIZE', (0,0), (-1,-1), 9),
+    ]))
+    elements.append(table)
 
-    c.showPage()
-    c.save()
+    # Score
+    earned = res.get("earned", 0); total = res.get("total", 0)
+    elements.append(Spacer(1, 12))
+    elements.append(Paragraph(f"Score: {earned}/{total}", styles["Heading2"]))
+
+    doc.build(elements)
     buffer.seek(0)
-    return buffer.getvalue()
-
-    if wrong_table:
-        c.drawString(100, height - 130, "Incorrect Answers:")
-        y = height - 150
-        for row in wrong_table:
-            qid = row.get("QuestionID", "")
-            qtext = row.get("QuestionText", "")[:60]  # trim
-            corr = row.get("Correct", "")
-            given = row.get("Your", "")
-            c.drawString(100, y, f"{qid}: {qtext} | Your: {given} | Correct: {corr}")
-            y -= 20
-
-    c.showPage()
-    c.save()
-    buffer.seek(0)
-    return buffer.getvalue()
+    return buffer.read()
+    
 def send_report_to_student(to_email, pdf_bytes):
     """
     Send quiz report to student via email.
@@ -144,6 +155,22 @@ def send_report_to_parent(parent_email, pdf_bytes, student_name):
     server.login(from_email, password)
     server.sendmail(from_email, parent_email, msg.as_string())
     server.quit()
+    
+# --- Tiny helper: teacher notification ---
+def send_email_simple(to, subject, body):
+    """
+    Send a plain text email (used for teacher dashboard link notification).
+    """
+    smtp_cfg = st.secrets.get("smtp", {})
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = smtp_cfg.get("from_email")
+    msg["To"] = to
+    msg.set_content(body)
+
+    with smtplib.SMTP_SSL(smtp_cfg.get("server"), smtp_cfg.get("port")) as server:
+        server.login(smtp_cfg.get("user"), smtp_cfg.get("password"))
+        server.send_message(msg)
 
 # --- Helpful utilities (small, robust) ---
 def get_params():
@@ -619,109 +646,72 @@ if not ss["main_submitted"]:
                 "questions": question_results
             }
             ss["main_submitted"] = True
-            # ✅ ensure remedial doesn’t start immediately on the same run
-            ss["remedial_ready"] = False  
+            ss["remedial_ready"] = False
             ss["remedial_pending"] = True
-            st.rerun()   # force a rerun so review loads first
 
-            # --- Auto-send PDF to Parent ---
-            try:
-                pdf_bytes = build_pdf_bytes(subject, subtopic_id, ss["main_results"], None, ss)
-                parent_email = ss["student_info"].get("ParentEmail", "")
-                student_name = ss["student_info"].get("StudentName", "Student")
-                if parent_email:
-                    send_report_to_parent(parent_email, pdf_bytes, student_name)
-            except Exception as e:
-                st.warning(f"Could not send parent report: {e}")
-                
-            # ------------------ TEACHER NOTIFICATION ------------------
-if mark_and_check_teacher_notified(tuition_code, subject, subtopic_id):
-    # Build dashboard link
-    dashboard_link = (
-        f"https://nagaraj11.streamlit.app/teacher_dashboard"
-        f"?batch={tuition_code}&subject={subject}&subtopic_id={subtopic_id}"
-    )
-                        
-    teacher_email = ss["student_info"].get("Teacher_Email", "")
-    if teacher_email:
-        send_email(
-            to=teacher_email,
-            subject=f"Live Dashboard Link — {subject} ({subtopic_id})",
-            body=f"A student has submitted the quiz.\n\n"
-                 f"You can view the live dashboard here:\n{dashboard_link}"
-        )
-                        
+# 1) Send Parent PDF now (same PDF as download)
+try:
+    pdf_bytes = build_pdf_bytes(subject, subtopic_id, ss["main_results"], None, ss)
+    parent_email = ss["student_info"].get("ParentEmail", "")
+    student_name = ss["student_info"].get("StudentName", "Student")
+    if parent_email:
+        send_report_to_parent(parent_email, pdf_bytes, student_name)
+except Exception as e:
+    st.warning(f"Could not send parent report: {e}")
+
+# 2) Notify Teacher ONCE with live dashboard link
+try:
+    tuition_code_for_db = ss["student_info"].get("Tuition_Code", "")
+    if mark_and_check_teacher_notified(tuition_code_for_db, subject, subtopic_id):
+        teacher_email = ss["student_info"].get("TeacherEmail", "")  # <- correct key
+        if teacher_email:
+            dashboard_link = (
+                "https://nagaraj11.streamlit.app/teacher_dashboard"
+                f"?batch={tuition_code_for_db}&subject={subject}&subtopic_id={subtopic_id}"
+            )
+            send_email_simple(
+                teacher_email,
+                f"Live Dashboard Link — {subject} ({subtopic_id})",
+                "A student has submitted the quiz.\n\n"
+                f"View the live dashboard here:\n{dashboard_link}"
+            )
+except Exception as e:
+    st.warning(f"Could not notify teacher: {e}")
+    
 # ------------------ AFTER SUBMIT (REVIEW MODE) ------------------
-else:
+if ss.get("main_submitted", False):
     res = ss.get("main_results", {})
     earned = res.get("earned", 0)
     total = res.get("total", 0)
-
 
     st.markdown("### ✅ Main Quiz Review")
     st.caption(f"Score: {earned}/{total}")
 
     for q in res.get("questions", []):   # ✅ Safe default: empty list
         qid = q.get("qid", "")
-        st.markdown(f"**Q{qid}**")  # Question number
-        
+        st.markdown(f"**Q{qid}**")  # Question number 
         st.markdown(q.get("question", ""))  # Question text
         if q.get("image"):
             st.image(q["image"], use_container_width=True)
         # show student answer
-        student_ans = q.get("student_ans", "")
-        correct_ans = q.get("correct_ans", "")
+        student_ans = q.get("student", "")
+        correct_ans = q.get("correct", "")
 
         if student_ans == correct_ans:
             st.success(f"✅ Your Answer: {student_ans}")
         else:
             st.error(f"❌ Your Answer: {student_ans}")
             st.info(f"✔️ Correct Answer: {correct_ans}")
-
-        # --- Show all options with highlighting ---
+            
         for opt in q.get("options", []):
-            if opt == student_ans:
-                if opt == correct_ans:
-                    # Student selected the correct option
-                    st.markdown(
-                        f"""
-                        <div style='background-color: rgba(0,255,0,0.15); 
-                                    padding:4px; border-radius:4px;
-                                    display:flex; justify-content:space-between;'>
-                            <span>{opt}</span>
-                            <span>✅ Correct</span>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                else:
-                    # Student selected wrong option
-                    st.markdown(
-                        f"""
-                        <div style='background-color: rgba(255,0,0,0.15);
-                                    padding:4px; border-radius:4px;
-                                    display:flex; justify-content:space-between;'>
-                            <span>{opt}</span>
-                            <span>❌ Your Choice</span>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
+            if opt == student_ans and opt == correct_ans:
+                st.markdown("<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:4px;'>✅ " + opt + "</div>", unsafe_allow_html=True)
+            elif opt == student_ans:
+                st.markdown("<div style='background-color: rgba(255,0,0,0.15); padding:4px; border-radius:4px;'>❌ " + opt + "</div>", unsafe_allow_html=True)
             elif opt == correct_ans:
-                # Correct option (not chosen by student)
-                st.markdown(
-                    f"""
-                    <div style='padding:4px; border-radius:4px;
-                                display:flex; justify-content:space-between;'>
-                        <span>{opt}</span>
-                        <span>✅ Correct</span>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+                st.markdown("<div>✅ " + opt + "</div>", unsafe_allow_html=True)
             else:
-                # Neutral option
-                st.markdown(f"<div>{opt}</div>", unsafe_allow_html=True)
+                st.markdown("<div>" + opt + "</div>", unsafe_allow_html=True)
 
         st.write("---")
 
