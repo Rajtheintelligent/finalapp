@@ -149,7 +149,6 @@ st.download_button("⬇️ Download PDF", pdf_bytes,
 # ============================================================
 # 🔍 Student Drill-Down Section
 # ============================================================
-
 st.subheader("🔍 Student Drill-Down")
 
 col1, col2, col3 = st.columns([2,2,1])
