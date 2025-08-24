@@ -666,11 +666,13 @@ except Exception as e:
 try:
     tuition_code_for_db = ss["student_info"].get("Tuition_Code", "")
     if mark_and_check_teacher_notified(tuition_code_for_db, subject, subtopic_id):
-        teacher_email = ss["student_info"].get("Teacher_Email", "")  # <- correct key
+        teacher_email = ss["student_info"].get("TeacherEmail", "")  # <- correct key
         if teacher_email:
             APP_URL = "https://nagaraj11.streamlit.app"  # replace later
             dashboard_link = f"{APP_URL}/?page=teacher_dashboard&batch={ss['student_info'].get('Tuition_Code','')}&subject={subject}&subtopic_id={subtopic_id}"
-             
+            # 👇 Debug print
+            st.write("DEBUG TeacherEmail:", teacher_email)
+
             send_email_simple(
                 teacher_email,
                 f"Live Dashboard Link — {subject} ({subtopic_id})",
