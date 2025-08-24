@@ -664,7 +664,7 @@ except Exception as e:
 teacher_email = ss["student_info"].get("Teacher_Email", "") or ss["student_info"].get("TeacherEmail", "")
 if teacher_email:
     APP_URL = "https://nagaraj11.streamlit.app"
-    dashboard_link = f"{APP_URL}/teacher_dashboard?batch={ss['student_info'].get('Tuition_Code','')}&subject={normalized_subject}&subtopic={subtopic_id}"
+    dashboard_link = f"{APP_URL}/teacher_dashboard?batch={ss['student_info'].get('Tuition_Code','')}&subject={subject}&subtopic={subtopic_id}"
     
     try:
         send_email_simple(
