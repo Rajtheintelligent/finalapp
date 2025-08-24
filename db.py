@@ -84,14 +84,13 @@ def get_batch_performance(batch_code: str, subject: str, subtopic: str):
     """
     db = SessionLocal()
     try:
-        # join students + responses
         query = (
             db.query(
                 Student.name.label("Student_Name"),
                 Student.email.label("Student_Email"),
                 Student.class_code.label("Tuition_Code"),
-                Response.subject,
-                Response.subtopic,
+                Response.subject.label("Subject"),
+                Response.subtopic.label("Subtopic"),
                 Response.is_correct
             )
             .join(Response, Student.id == Response.student_id)
@@ -104,16 +103,20 @@ def get_batch_performance(batch_code: str, subject: str, subtopic: str):
         rows = query.all()
 
         if not rows:
-            return pd.DataFrame()
+            return pd.DataFrame(columns=[
+                "Student_Name", "Student_Email", "Tuition_Code",
+                "Subject", "Subtopic", "Correct", "Incorrect"
+            ])
 
         # Convert to DataFrame
         df = pd.DataFrame(rows, columns=[
-            "Student_Name", "Student_Email", "Tuition_Code", "Subject", "Subtopic", "is_correct"
+            "Student_Name", "Student_Email", "Tuition_Code",
+            "Subject", "Subtopic", "is_correct"
         ])
 
         # Aggregate correct vs incorrect
         perf = (
-            df.groupby(["Student_Name", "Student_Email"])
+            df.groupby(["Student_Name", "Student_Email", "Tuition_Code", "Subject", "Subtopic"])
               .agg(Correct=("is_correct", lambda x: x.sum()),
                    Incorrect=("is_correct", lambda x: (~x).sum()))
               .reset_index()
@@ -122,6 +125,7 @@ def get_batch_performance(batch_code: str, subject: str, subtopic: str):
 
     finally:
         db.close()
+
         
 def get_student_responses(student_email: str, subject: str, subtopic: str):
     """
