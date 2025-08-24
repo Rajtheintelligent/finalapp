@@ -137,8 +137,11 @@ col1, col2, col3 = st.columns([2,2,1])
 with col1:
     dd_batch = st.text_input("Batch Code", value=batch)
 with col2:
-    dd_subject = st.selectbox("Subject", options=["Algebra","Geometry","Science1","Science2","English"],
-                              index=(["Algebra","Geometry","Science1","Science2","English"].index(subject) if subject in ["Algebra","Geometry","Science1","Science2","English"] else 0))
+    dd_subject = st.selectbox(
+        "Subject",
+        options=["Mathematics","english"],  # match your DB exactly
+        index=(["Mathematics","english"].index(subject) if subject in ["Mathematics","english"] else 0)
+    )
 with col3:
     dd_email = st.text_input("Student Email", placeholder="student@example.com")
 
