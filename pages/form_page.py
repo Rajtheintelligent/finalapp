@@ -661,61 +661,29 @@ try:
 except Exception as e:
     st.warning(f"Could not send parent report: {e}")
 
-# --- FORCE teacher email every submission (for testing) ---
+
+ #2) Notify Teacher ONCE with live dashboard link
 try:
-    teacher_email = ss["student_info"].get("TeacherEmail", "")
-    if teacher_email:
-        APP_URL = "https://nagaraj11.streamlit.app"  # replace later
-        dashboard_link = f"{APP_URL}/?page=teacher_dashboard&batch={ss['student_info'].get('Tuition_Code','')}&subject={subject}&subtopic_id={subtopic_id}"
-
-        send_email_simple(
-            teacher_email,
-            f"🔗 Test Dashboard Link — {subject} ({subtopic_id})",
-            "This is a TEST email.\n\n"
-            f"Dashboard link:\n{dashboard_link}"
-        )
-        st.success(f"📧 Sent test dashboard link to teacher: {teacher_email}")
-    else:
-        st.error("⚠️ No Teacher Email found in Register sheet.")
+    tuition_code_for_db = ss["student_info"].get("Tuition_Code", "")
+    if mark_and_check_teacher_notified(tuition_code_for_db, subject, subtopic_id):
+        teacher_email = ss["student_info"].get("TeacherEmail", "")  # <- correct key
+        if teacher_email:
+            APP_URL = "https://nagaraj11.streamlit.app"  # <-- put your real app base URL here once
+            page_param = "teacher_dashboard"             # exactly as the page appears in the sidebar
+            
+            dashboard_link = (
+                f"{APP_URL}/?page={page_param.replace(' ', '%20')}"
+                f"&batch={tuition_code_for_db}&subject={subject}&subtopic_id={subtopic_id}"
+            )
+            send_email_simple(
+                teacher_email,
+                f"Live Dashboard Link — {subject} ({subtopic_id})",
+                "A student has submitted the quiz.\n\n"
+                f"View the live dashboard here:\n{dashboard_link}"
+            )
 except Exception as e:
-    st.error(f"❌ Could not send teacher test email: {e}")
-
-
-
-# 2) Notify Teacher ONCE with live dashboard link
-#try:
-#    tuition_code_for_db = ss["student_info"].get("Tuition_Code", "")
-#    if mark_and_check_teacher_notified(tuition_code_for_db, subject, subtopic_id):
-#        teacher_email = ss["student_info"].get("TeacherEmail", "")  # <- correct key
-#        if teacher_email:
-#            APP_URL = "https://nagaraj11.streamlit.app"  # <-- put your real app base URL here once
-#            page_param = "teacher_dashboard"             # exactly as the page appears in the sidebar
-#            
-#            dashboard_link = (
-#                f"{APP_URL}/?page={page_param.replace(' ', '%20')}"
-#                f"&batch={tuition_code_for_db}&subject={subject}&subtopic_id={subtopic_id}"
-#            )
-#            send_email_simple(
-#                teacher_email,
-#                f"Live Dashboard Link — {subject} ({subtopic_id})",
-#                "A student has submitted the quiz.\n\n"
-#                f"View the live dashboard here:\n{dashboard_link}"
-#            )
-#except Exception as e:
-#    st.warning(f"Could not notify teacher: {e}")
-
-
-
-
-
-
-
-
-
-
-
-
-
+    st.warning(f"Could not notify teacher: {e}")
+    
 # ------------------ AFTER SUBMIT (REVIEW MODE) ------------------
 if ss.get("main_submitted", False):
     res = ss.get("main_results", {})
