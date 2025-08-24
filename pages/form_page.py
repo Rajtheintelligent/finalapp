@@ -911,6 +911,18 @@ if ss.get("remedial_ready", False):
     st.header("Remedial Quiz")
 
     wrong_ids = ss["main_results"].get("wrong_ids", [])
+    if "MainQuestionID" not in remedial_df.columns:
+        st.info("Remedial sheet missing 'MainQuestionID' column.")
+    else:
+        rem_set = remedial_df[
+            remedial_df["MainQuestionID"].astype(str).str.strip().isin(wrong_ids)
+        ].copy()
+
+        if rem_set.empty:
+            st.info("No remedial questions found for these misses.")
+        else:
+            ss.setdefault("remedial_answers", {})
+            ss.setdefault("remedial_submitted", False)
 
     if "MainQuestionID" not in remedial_df.columns:
         st.info("Remedial sheet missing 'MainQuestionID' column.")
@@ -922,19 +934,6 @@ if ss.get("remedial_ready", False):
         if rem_set.empty:
             st.info("No remedial questions found for these misses.")
         else:
-            # --- TIMER BLOCK ---
-            if "remedial_timer_start" not in ss:
-                ss["remedial_timer_start"] = datetime.now().timestamp()
-
-            elapsed = datetime.now().timestamp() - ss["remedial_timer_start"]
-            countdown = 20 - int(elapsed)
-
-            if countdown > 0:
-                st.warning(f"⏳ Remedial quiz will unlock in {countdown} seconds...")
-                st.progress((20 - countdown) / 20.0)
-                st.stop()   # stop rendering further until timer is done
-            # --- TIMER BLOCK END ---
-
             ss.setdefault("remedial_answers", {})
             ss.setdefault("remedial_submitted", False)
 
