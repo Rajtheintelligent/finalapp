@@ -54,6 +54,7 @@ if DEMO_MODE:
     df = load_responses_demo(batch, subject, subtopic_id)
 else:
     df = get_batch_performance(batch, subject, subtopic_id)
+st.write("DEBUG df.columns:", df.columns.tolist())
 st.write("DEBUG query params:",
          batch, subject, subtopic_id)
 
