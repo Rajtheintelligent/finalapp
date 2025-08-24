@@ -661,52 +661,23 @@ try:
 except Exception as e:
     st.warning(f"Could not send parent report: {e}")
     
-# --- DEBUGGED: Notify teacher once (instrumented) ---
-try:
-    tuition_code_for_db = ss["student_info"].get("Tuition_Code", "")
-    # 1) Debug: show the student_info keys & tuition code
-    st.write("DEBUG ss['student_info'] keys:", list(ss["student_info"].keys()))
-    st.write("DEBUG Tuition_Code (from sheet):", repr(tuition_code_for_db))
-
-    # 2) Check the notify marker (True -> we should notify now)
-    notified_now = mark_and_check_teacher_notified(tuition_code_for_db, subject, subtopic_id)
-    st.write("DEBUG mark_and_check_teacher_notified returned:", notified_now)
-
-    if not notified_now:
-        st.info("Teacher already notified for this batch/subject/subtopic. Skipping email send.")
-    else:
-        # 3) Try fetching email using both possible keys (underscore / no underscore)
-        teacher_email = ss["student_info"].get("Teacher_Email", "") or ss["student_info"].get("TeacherEmail", "")
-        st.write("DEBUG teacher_email (raw):", repr(teacher_email))
-
-        if not teacher_email:
-            st.error("No teacher email found (check Register sheet column name).")
-            # For debugging: show the whole student_info row (optional)
-            st.write("DEBUG full student_info:", ss["student_info"])
-        else:
-            APP_URL = "https://nagaraj11.streamlit.app"
-            dashboard_link = f"{APP_URL}/?page=teacher_dashboard&batch={ss['student_info'].get('Tuition_Code','')}&subject={subject}&subtopic_id={subtopic_id}"
-            st.write("DEBUG dashboard_link:", dashboard_link)
-
-            # 4) Check SMTP secrets (quick)
-            st.write("DEBUG smtp config present:", bool(st.secrets.get("smtp", {})))
-
-            # 5) Send email and catch any exceptions
-            try:
-                result = send_email_simple(
-                    teacher_email,
-                    f"Live Dashboard Link — {subject} ({subtopic_id})",
-                    "A student has submitted the quiz.\n\n"
-                    f"View the live dashboard here:\n{dashboard_link}"
-                )
-                # if send_email_simple returns a value, show it
-                st.write("DEBUG send_email_simple returned:", repr(result))
-                st.success(f"📧 Notification attempt made to: {teacher_email}")
-            except Exception as e_send:
-                st.exception(e_send)
-                st.warning("Failed to send email — check exception above and SMTP settings.")
-except Exception as e:
-    st.warning(f"Could not notify teacher: {e}")
+teacher_email = ss["student_info"].get("Teacher_Email", "") or ss["student_info"].get("TeacherEmail", "")
+if teacher_email:
+    APP_URL = "https://nagaraj11.streamlit.app"
+    dashboard_link = f"{APP_URL}/?page=teacher_dashboard&batch={ss['student_info'].get('Tuition_Code','')}&subject={subject}&subtopic_id={subtopic_id}"
+    
+    try:
+        send_email_simple(
+            teacher_email,
+            f"Live Dashboard Link — {subject} ({subtopic_id})",
+            "A student has submitted the quiz.\n\n"
+            f"View the live dashboard here:\n{dashboard_link}"
+        )
+        st.success(f"📧 Sent dashboard link to teacher: {teacher_email}")
+    except Exception as e:
+        st.error(f"❌ Could not send teacher email: {e}")
+else:
+    st.error("⚠️ No Teacher Email found in Register sheet.")
 
     
 # ------------------ AFTER SUBMIT (REVIEW MODE) ------------------
