@@ -54,6 +54,16 @@ if DEMO_MODE:
     df = load_responses_demo(batch, subject, subtopic_id)
 else:
     df = get_batch_performance(batch, subject, subtopic_id)
+st.write("DEBUG query params:",
+         batch, subject, subtopic_id)
+
+st.write("DEBUG loaded submissions (head):")
+st.dataframe(df.head())   # df = dataframe you load for responses
+
+# Check what unique values exist in the sheet
+st.write("DEBUG unique batches:", df["Tuition_Code"].unique().tolist())
+st.write("DEBUG unique subjects:", df["Subject"].unique().tolist())
+st.write("DEBUG unique subtopics:", df["Subtopic_ID"].unique().tolist())
 
 if df.empty:
     st.info("No submissions yet.")
