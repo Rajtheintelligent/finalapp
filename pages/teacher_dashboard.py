@@ -76,11 +76,54 @@ else:
     st.info("No live submissions yet.")
 
 # ---------- Visualization ----------
-st.subheader("📈 Student Performance")
+# ---------- Visualization ----------
+if df.empty:
+    st.info("No live submissions yet.")
+else:
+    st.subheader("📈 Student Performance")
 
-# Sort by correct answers
-df["Total"] = df["Correct"] + df["Incorrect"]
-df = df.sort_values(by="Correct", ascending=False)
+    # Sort by correct answers
+    df["Total"] = df["Correct"] + df["Incorrect"]
+    df = df.sort_values(by="Correct", ascending=False)
+
+    # Mobile-friendly: adjust fig height based on number of students
+    fig_height = max(3, len(df) * 0.6)
+    fig, ax = plt.subplots(figsize=(8, fig_height))
+
+    bars_correct = ax.barh(df["Student_Name"], df["Correct"], color="#4CAF50", label="Correct")
+    bars_incorrect = ax.barh(df["Student_Name"], df["Incorrect"],
+                             left=df["Correct"], color="#E53935", label="Incorrect")
+
+    # Add labels inside bars
+    for i, (c, ic) in enumerate(zip(df["Correct"], df["Incorrect"])):
+        if c > 0:
+            ax.text(c / 2, i, str(c), va="center", ha="center", color="white", fontsize=9, weight="bold")
+        if ic > 0:
+            ax.text(c + ic / 2, i, str(ic), va="center", ha="center", color="white", fontsize=9, weight="bold")
+
+    ax.set_xlabel("Number of Questions", fontsize=11)
+    ax.set_ylabel("Students", fontsize=11)
+    ax.set_title(f"{subject} - {subtopic_id} Performance", fontsize=14, weight="bold", pad=12)
+
+    ax.tick_params(axis="y", labelsize=10)
+    ax.tick_params(axis="x", labelsize=9)
+    ax.legend(loc="upper right", fontsize=9)
+    plt.tight_layout()
+
+    st.pyplot(fig, use_container_width=True)
+
+    # ---------- Download CSV ----------
+    csv_bytes = df.to_csv(index=False).encode("utf-8")
+    st.download_button("⬇️ Download CSV", csv_bytes,
+                       file_name=f"{batch}_{subtopic_id}_report.csv",
+                       mime="text/csv")
+
+    # ---------- Download PDF ----------
+    pdf_bytes = build_pdf(df)
+    st.download_button("⬇️ Download PDF", pdf_bytes,
+                       file_name=f"{batch}_{subtopic_id}_report.pdf",
+                       mime="application/pdf")
+
 
 # Mobile-friendly: adjust fig height based on number of students
 fig_height = max(3, len(df) * 0.6)
