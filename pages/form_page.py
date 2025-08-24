@@ -686,39 +686,68 @@ if ss.get("main_submitted", False):
     earned = res.get("earned", 0)
     total = res.get("total", 0)
 
-    st.markdown("### ✅ Main Quiz Review")
-    st.caption(f"Score: {earned}/{total}")
+    st.markdown("### Main Quiz Review")
+    st.success(f"Score: {earned}/{total}")
 
-    for q in res.get("questions", []):   # ✅ Safe default: empty list
-        qid = q.get("qid", "")
-        st.markdown(f"**Q{qid}**")  # Question number 
-        st.markdown(q.get("question", ""))  # Question text
-        if q.get("image"):
-            st.image(q["image"], use_container_width=True)
-        # show student answer
+    for q in res.get("questions", []):
+        qid   = str(q.get("qid", "")).strip()
+        qtext = str(q.get("question", "")).strip()
+        qimg  = q.get("image", "")
+        correct = q.get("correct", "")
+        opts = q.get("options", [])
+
+        # shuffle display consistently
+        disp_opts = stable_shuffle(opts, f"MAIN::{qid}")
+
+        st.markdown(f"**{qid}**<br>{qtext}", unsafe_allow_html=True)
+        if qimg:
+            st.image(qimg, use_container_width=True)
+
         student_ans = q.get("student", "")
-        correct_ans = q.get("correct", "")
 
-        if student_ans == correct_ans:
-            st.success(f"✅ Your Answer: {student_ans}")
-        else:
-            st.error(f"❌ Your Answer: {student_ans}")
-            st.info(f"✔️ Correct Answer: {correct_ans}")
-            
-        for opt in q.get("options", []):
-            if opt == student_ans and opt == correct_ans:
-                st.markdown("<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:4px;'>✅ " + opt + "</div>", unsafe_allow_html=True)
-            elif opt == student_ans:
-                st.markdown("<div style='background-color: rgba(255,0,0,0.15); padding:4px; border-radius:4px;'>❌ " + opt + "</div>", unsafe_allow_html=True)
-            elif opt == correct_ans:
-                st.markdown(f"<div>✅ {opt}</div>", unsafe_allow_html=True)
+        for opt in disp_opts:
+            if opt == student_ans:
+                if opt == correct:
+                    st.markdown(
+                        f"""
+                        <div style='background-color: rgba(0,255,0,0.15);
+                                    padding:4px; border-radius:5px;
+                                    display:flex; justify-content:space-between;'>
+                            <span>{opt}</span>
+                            <span>✅ Correct</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                else:
+                    st.markdown(
+                        f"""
+                        <div style='background-color: rgba(255,0,0,0.15);
+                                    padding:4px; border-radius:5px;
+                                    display:flex; justify-content:space-between;'>
+                            <span>{opt}</span>
+                            <span>❌ Incorrect</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+            elif opt == correct:
+                st.markdown(
+                    f"""
+                    <div style='display:flex; justify-content:space-between;'>
+                        <span>{opt}</span>
+                        <span>✅ Correct</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
             else:
                 st.markdown(f"<div>{opt}</div>", unsafe_allow_html=True)
 
-        st.write("---")
+        st.markdown("---")
 
     st.success(f"Final Score: {earned}/{total}")
-
+    
     # ---------- FINAL COMBINED SUMMARY / GRAPH / PDF EXPORT / EMAIL ----------
     from matplotlib.ticker import MaxNLocator
 
