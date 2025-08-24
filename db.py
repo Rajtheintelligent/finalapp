@@ -113,7 +113,7 @@ def get_batch_performance(batch_code: str, subject: str, subtopic: str = None) -
             .join(Response, Student.id == Response.student_id)
             .filter(
                 Student.class_code == batch_code,
-                Response.subject == subject
+                Response.subject.ilike(subject)
             )
         )
         if subtopic:
@@ -178,7 +178,7 @@ def get_student_responses(student_email: str, subject: str, subtopic: str) -> pd
             .join(Student, Student.id == Response.student_id)
             .filter(
                 Student.email == student_email,
-                Response.subject == subject,
+                Response.subject.ilike(subject),
                 Response.subtopic == subtopic
             )
         )
