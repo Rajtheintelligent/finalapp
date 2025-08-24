@@ -62,13 +62,18 @@ st.write("DEBUG loaded submissions (head):")
 st.dataframe(df.head())   # df = dataframe you load for responses
 
 # Check what unique values exist in the sheet
-st.write("DEBUG unique batches:", df["Tuition_Code"].unique().tolist())
-st.write("DEBUG unique subjects:", df["Subject"].unique().tolist())
-st.write("DEBUG unique subtopics:", df["Subtopic_ID"].unique().tolist())
-
-if df.empty:
-    st.info("No submissions yet.")
-    st.stop()
+for col in ["Tuition_Code", "Subject", "Subtopic_ID"]:
+    if col in df.columns:
+        st.write(f"DEBUG unique {col}:", df[col].unique().tolist())
+    else:
+        st.warning(f"Column {col} not found in df")
+        
+# 🔄 Live Dashboard only if df not empty
+if not df.empty:
+    st.subheader("📈 Student Performance")
+    # ... (rest of your chart + downloads)
+else:
+    st.info("No live submissions yet.")
 
 # ---------- Visualization ----------
 st.subheader("📈 Student Performance")
