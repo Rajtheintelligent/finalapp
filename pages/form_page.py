@@ -668,13 +668,9 @@ try:
     if mark_and_check_teacher_notified(tuition_code_for_db, subject, subtopic_id):
         teacher_email = ss["student_info"].get("Teacher_Email", "")  # <- correct key
         if teacher_email:
-            APP_URL = "https://nagaraj11.streamlit.app"  # <-- put your real app base URL here once
-            page_param = "teacher_dashboard"             # exactly as the page appears in the sidebar
-            
-            dashboard_link = (
-                f"{APP_URL}/?page={page_param.replace(' ', '%20')}"
-                f"&batch={tuition_code_for_db}&subject={subject}&subtopic_id={subtopic_id}"
-            )
+            APP_URL = "https://nagaraj11.streamlit.app"  # replace later
+            dashboard_link = f"{APP_URL}/?page=teacher_dashboard&batch={ss['student_info'].get('Tuition_Code','')}&subject={subject}&subtopic_id={subtopic_id}"
+             
             send_email_simple(
                 teacher_email,
                 f"Live Dashboard Link — {subject} ({subtopic_id})",
