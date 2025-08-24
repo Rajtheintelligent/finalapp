@@ -666,7 +666,7 @@ except Exception as e:
 try:
     tuition_code_for_db = ss["student_info"].get("Tuition_Code", "")
     if mark_and_check_teacher_notified(tuition_code_for_db, subject, subtopic_id):
-        teacher_email = ss["student_info"].get("TeacherEmail", "")  # <- correct key
+        teacher_email = ss["student_info"].get("Teacher_Email", "")  # <- correct key
         if teacher_email:
             APP_URL = "https://nagaraj11.streamlit.app"  # <-- put your real app base URL here once
             page_param = "teacher_dashboard"             # exactly as the page appears in the sidebar
