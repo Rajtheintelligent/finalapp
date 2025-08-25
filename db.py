@@ -2,6 +2,7 @@ from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignK
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 import streamlit as st
 import pandas as pd
+from sqlalchemy import func
 
 # =============================================================
 # Database setup
@@ -144,12 +145,12 @@ def get_batch_performance(batch_code: str, subject: str, subtopic: str = None) -
             )
             .join(Response, Student.id == Response.student_id)
             .filter(
-                Student.class_code == batch_code,
-                Response.subject.ilike(subject)
+                Student.class_code == batch_code.strip(),
+                func.lower(Response.subject) == func.lower(subject.strip())
             )
         )
         if subtopic:
-            q = q.filter(Response.subtopic == subtopic)
+            q = q.filter(func.lower(Response.subtopic) == func.lower(subtopic.strip()))
 
         rows = q.all()
         if not rows:
