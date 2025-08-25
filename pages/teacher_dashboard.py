@@ -1,11 +1,7 @@
 import streamlit as st
 import pandas as pd
 from sqlalchemy import func
-from database import SessionLocal, Student, Response
-from db import SessionLocal, Student, Response
-from db import get_batch_performance   # since you already defined it in db.py
-
-
+from db import SessionLocal, Student, Response, get_batch_performance
 
 st.set_page_config(page_title="📊 Teacher Dashboard", layout="wide")
 
