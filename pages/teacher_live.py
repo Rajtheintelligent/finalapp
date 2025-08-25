@@ -8,7 +8,7 @@ st.set_page_config(page_title="Live Teacher Dashboard", layout="wide")
 st.title("📊 Live Dashboard (teacher view)")
 
 # Read query params
-qp = st.experimental_get_query_params()
+qp = st.query_params
 batch = qp.get("batch", [None])[0]
 subject = qp.get("subject", [None])[0]
 subtopic = qp.get("subtopic", [None])[0]  # optional
