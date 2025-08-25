@@ -664,31 +664,17 @@ except Exception as e:
     
 teacher_email = ss["student_info"].get("Teacher_Email", "") or ss["student_info"].get("TeacherEmail", "")
 if teacher_email:
-    APP_URL = "https://nagaraj11.streamlit.app"  # keep your app URL here
-    batch_val = str(ss['student_info'].get('Tuition_Code', '')).strip()
-    subject_val = str(subject).strip()
-    subtopic_val = str(subtopic_id).strip()
-
-    params = {"batch": batch_val, "subject": subject_val}
-    # only include subtopic if non-empty
-    if subtopic_val:
-        params["subtopic"] = subtopic_val
-
-    # Build guaranteed deep-link to the new teacher page
-    dashboard_link = f"{APP_URL}/?page=teacher_live&{urlencode(params)}"
-
-    # show link on the submission page for debug / teacher quick-copy
-    st.markdown("**Live dashboard link (for teacher):**")
-    st.markdown(f"[Open teacher dashboard]({dashboard_link})")
-
+    APP_URL = "https://nagaraj11.streamlit.app"
+    dashboard_link = f"{APP_URL}/teacher_dashboard?batch={ss['student_info'].get('Tuition_Code','')}&subject={subject}&subtopic={subtopic_id}"
+    
     try:
         send_email_simple(
             teacher_email,
-            f"Live Dashboard Link — {subject_val} ({subtopic_val})",
+            f"Live Dashboard Link — {subject} ({subtopic_id})",
             "A student has submitted the quiz.\n\n"
             f"View the live dashboard here:\n{dashboard_link}"
         )
-        st.success(f"📧 Sent teacher link to: {teacher_email}")
+        st.success(f"📧 Sent dashboard link to teacher: {teacher_email}")
     except Exception as e:
         st.error(f"❌ Could not send teacher email: {e}")
 else:
