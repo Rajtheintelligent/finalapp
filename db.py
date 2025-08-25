@@ -153,6 +153,12 @@ def get_batch_performance(batch_code: str, subject: str, subtopic: str = None) -
             q = q.filter(func.lower(Response.subtopic) == func.lower(subtopic.strip()))
 
         rows = q.all()
+        print("DEBUG batch_code:", batch_code)
+        print("DEBUG subject:", subject)
+        print("DEBUG subtopic:", subtopic)
+        print("DEBUG rows fetched:", len(rows))
+        if rows:
+            print("Sample row:", rows[0])
         if not rows:
             return pd.DataFrame(columns=[
                 "Student_Name","Student_Email","Tuition_Code","Subject","Subtopic","Correct","Incorrect"
