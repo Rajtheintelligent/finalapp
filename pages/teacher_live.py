@@ -114,7 +114,7 @@ else:
 # Optional: small raw link for teacher to copy
 st.markdown("---")
 st.markdown("If you need the deep link again (copy/paste):")
-safe_link = st.experimental_get_query_params()  # just to remind
+safe_link = st.query_params
 base = st.get_option("server.baseUrl") if st.get_option("server.baseUrl", None) else ""
 # show the actual URL teacher used (not always possible to compute programmatically), so print expected pattern:
 st.code(f"https://<your-app>/?page=teacher_live&batch={batch}&subject={subject}&subtopic={subtopic or ''}")
