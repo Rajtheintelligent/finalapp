@@ -187,50 +187,94 @@ if go:
 
                     st.markdown("---")
 
+
                     # ---------------------------
-                    # Formal Horizontal Stacked Bar Chart
+                    # Vertical Stacked Bar Chart (by Subtopic for now)
                     # ---------------------------
-                    subtopics = merged["Subtopic"].astype(str).tolist()
-                    corrects = merged["Correct"].astype(int).tolist()
-                    incorrects = merged["Incorrect"].astype(int).tolist()
-                    totals = merged["Total"].astype(int).tolist()
-                    class_accs = merged["Class_AccuracyPct"].tolist()
-                    student_accs = merged["Student_AccuracyPct"].tolist()
 
-                    # Plot sizing
-                    n = max(1, len(subtopics))
-                    fig_height = max(3, n * 0.6)
-                    fig, ax = plt.subplots(figsize=(10, fig_height))
-                    # Plot stacked horizontal bars
-                    y_pos = np.arange(len(subtopics))
+                    # 1) Optional: let teacher control bar ordering
+                    order_choice = st.selectbox(
+                        "Order bars by",
+                        ["Original (weakest first)", "Student Accuracy ↑", "Student Accuracy ↓", "Total Questions ↑", "Total Questions ↓"],
+                        index=0
+                    )
+                        
+                    if order_choice == "Student Accuracy ↑":
+                        merged = merged.sort_values("Student_AccuracyPct", ascending=True, na_position="last")
+                    elif order_choice == "Student Accuracy ↓":
+                        merged = merged.sort_values("Student_AccuracyPct", ascending=False, na_position="last")
+                    elif order_choice == "Total Questions ↑":
+                        merged = merged.sort_values("Total", ascending=True, na_position="last")
+                    elif order_choice == "Total Questions ↓":
+                        merged = merged.sort_values("Total", ascending=False, na_position="last")
+                    # else keep the existing order (which you already set to weakest first)
+                            
+                    merged = merged.reset_index(drop=True)
 
-                    # Colors (formal): correct = dark green, incorrect = dark red
-                    correct_color = "#2E7D32"
-                    incorrect_color = "#C62828"
-                    ax.barh(y_pos, corrects, color=correct_color, label="Correct", edgecolor="none")
-                    ax.barh(y_pos, incorrects, left=corrects, color=incorrect_color, label="Incorrect", edgecolor="none")
+                    # 2) Prepare series
+                    labels = merged["Subtopic"].astype(str).tolist()
+                    corrects = merged["Correct"].astype(int).to_numpy()
+                    incorrects = merged["Incorrect"].astype(int).to_numpy()
+                    totals = corrects + incorrects
+                    student_accs = merged["Student_AccuracyPct"].to_numpy()
+                    class_accs = merged["Class_AccuracyPct"].to_numpy()
+                       
+                    x = np.arange(len(labels))
 
-                    # Labels inside bars: show counts
+                    # 3) Sizing/colors
+                    n = max(1, len(labels))
+                    # Wider and taller than before; width grows a bit with number of bars
+                    fig_width = max(12, 0.45 * n + 8)
+                    fig_height = 9  # taller chart as requested
+
+                    fig, ax1 = plt.subplots(figsize=(fig_width, fig_height))
+
+                    correct_color = "#2E7D32"   # green
+                    incorrect_color = "#C62828" # red
+
+                    # 4) Stacked vertical bars
+                    ax1.bar(x, corrects, label="Correct", color=correct_color, edgecolor="none")
+                    ax1.bar(x, incorrects, bottom=corrects, label="Incorrect", color=incorrect_color, edgecolor="none")
+
+                    # 5) Count labels inside stacks
                     for i, (c, ic, tot) in enumerate(zip(corrects, incorrects, totals)):
-                        # correct label
+                        # center of the green segment
                         if c > 0:
-                            ax.text(c/2, i, str(int(c)), va="center", ha="center", color="white", fontsize=9, weight="bold")
-                        # incorrect label
+                            ax1.text(i, c * 0.5, f"{int(c)}", ha="center", va="center", color="white", fontsize=9, weight="bold")
+                        # center of the red segment
                         if ic > 0:
-                            ax.text(c + ic/2, i, str(int(ic)), va="center", ha="center", color="white", fontsize=9, weight="bold")
-                        # overall percentage to the right
-                        pct_text = f"{student_accs[i]:.0f}%" if not np.isnan(student_accs[i]) else "—"
-                        class_text = f"Class: {class_accs[i]:.0f}%" if not np.isnan(class_accs[i]) else "Class: —"
-                        ax.text(tot + max(1, tot*0.02), i, f"{pct_text}  ({class_text})", va="center", ha="left", color="#222", fontsize=9)
+                            ax1.text(i, c + ic * 0.5, f"{int(ic)}", ha="center", va="center", color="white", fontsize=9, weight="bold")
+                        # accuracy text just above the bar
+                        stud_txt = f"{student_accs[i]:.0f}%" if not np.isnan(student_accs[i]) else "—"
+                        cls_txt = f"{class_accs[i]:.0f}%" if not np.isnan(class_accs[i]) else "—"
+                        ax1.text(i, tot + max(1, tot * 0.03), f"{stud_txt}  (Class {cls_txt})",
+                                 ha="center", va="bottom", fontsize=9, color="#222")
+                                   
+                    # 6) Axes & ticks
+                    ax1.set_xticks(x)
+                    ax1.set_xticklabels(labels, rotation=45, ha="right", fontsize=10)
+                    ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
+                    ax1.set_ylabel("Number of Questions", fontsize=11)
+                    ax1.set_xlabel("Subtopic", fontsize=11)
+                    ax1.set_title(f"{student_email} — {subject_db} (by Subtopic)", fontsize=13, weight="bold", pad=12)
 
-                    # Axis & style
-                    ax.set_yticks(y_pos)
-                    ax.set_yticklabels(subtopics, fontsize=10)
-                    ax.invert_yaxis()  # highest priority at top
-                    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-                    ax.set_xlabel("Number of Questions", fontsize=11)
-                    ax.set_title(f"{student_email} — {subject_db} (by Subtopic)", fontsize=13, weight="bold", pad=12)
-                    ax.legend(loc="lower right", fontsize=9)
+                    # 7) Accuracy overlay (secondary axis). Helpful for trend.
+                    ax2 = ax1.twinx()
+                    ax2.plot(x, student_accs, marker="o", linestyle="--", label="Student Accuracy %")
+                    ax2.plot(x, class_accs, marker="s", linestyle=":", label="Class Accuracy %")
+                    ax2.set_ylim(0, 100)
+                    ax2.set_ylabel("Accuracy (%)")
+                               
+                    # 8) Weakness highlight (optional): outline bars where student < 50%
+                    for i, (acc, tot) in enumerate(zip(student_accs, totals)):
+                        if not np.isnan(acc) and acc < 50:
+                            # Draw a subtle outline rectangle around that bar
+                            ax1.add_patch(plt.Rectangle((i - 0.5, 0), 1.0, tot if tot > 0 else 0.1,
+                                         fill=False, linewidth=1.5))
+                         
+                    # 9) Legends and layout 
+                    ax1.legend(loc="upper left", fontsize=9)
+                    ax2.legend(loc="upper right", fontsize=9)
                     plt.tight_layout()
                     st.pyplot(fig, use_container_width=True)
 
