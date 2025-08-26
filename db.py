@@ -36,7 +36,8 @@ class Response(Base):
     student_answer = Column(String(255))
     correct_answer = Column(String(255))
     is_correct = Column(Boolean)
-
+    quiz_id = Column(String(100), index=True)
+    
     # NEW — optional quiz identifier to group responses as one "main quiz"
     quiz_id = Column(String(100), index=True, nullable=True)
 
