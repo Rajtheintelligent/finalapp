@@ -121,20 +121,103 @@ subjects = fetch_distinct_subjects()
 
 controls_left, controls_right = st.columns([3, 2])
 with controls_left:
-    # Batch: prefer a selectbox when DB has values, else a free text input
-    if batches:
-        batch = st.selectbox("Batch (Tuition Code)", options=[""] + batches, index=0, help="Pick a class/batch")
-        # allow manual override
-        batch = st.text_input("Or type Batch (overrides selection)", value=batch)
+    # =========================
+    # 🎛️ Filters Area
+    # =========================
+    st.markdown("## 🔎 Filters")
+
+    # --- Batch selection ---
+    def load_batches(limit=200):
+        try:
+            from db import SessionLocal, Student
+            db = SessionLocal()
+            try:
+                rows = (
+                    db.query(Student.class_code)
+                      .distinct()
+                      .limit(limit)
+                      .all()
+                )
+                vals = sorted([r[0] for r in rows if r[0]])
+                return vals
+            finally:
+                db.close()
+        except Exception:
+            # fallback if DB not available
+            return ["BatchA", "BatchB", "BatchC"]
+
+    batch_choices = load_batches()
+    batch = st.selectbox("📘 Batch", options=batch_choices, index=0)
+           
+           
+    # --- Subject selection ---
+    def load_subjects(limit=50):
+        try:
+            from db import SessionLocal, Response
+            db = SessionLocal()
+            try:
+                rows = (
+                    db.query(Response.subject)
+                      .distinct()
+                      .limit(limit)
+                      .all()
+                )
+                vals = sorted([r[0] for r in rows if r[0]])
+                return vals
+            finally:
+                db.close()
+        except Exception:
+            return ["Mathematics", "English", "Science"]
+
+    subject_choices = load_subjects()
+    subject = st.selectbox("📗 Subject", options=subject_choices, index=0)
+          
+         
+    # --- Subtopic selection (dynamic) ---
+    def load_subtopics_for(batch_code: str, subject: str, limit=500):
+        if not batch_code or not subject:
+            return []
+        try:
+            from db import SessionLocal, Student, Response
+            db = SessionLocal()
+            try:
+                rows = (
+                    db.query(Response.subtopic)
+                      .join(Student, Student.id == Response.student_id)
+                      .filter(Student.class_code == batch_code.strip())
+                      .filter(Response.subject.ilike(subject.strip()))
+                      .distinct()
+                      .limit(limit)
+                      .all()
+                )
+                vals = sorted([r[0] for r in rows if r[0]])
+                return vals
+            finally:
+                db.close()
+        except Exception:
+            return []
+
+    if batch and subject:
+        subtopic_choices = load_subtopics_for(batch, subject)
     else:
-        batch = st.text_input("Batch (Tuition Code)", value="")
+        subtopic_choices = []
+           
+    if subtopic_choices:
+        sub_filter = st.text_input("🔍 Filter subtopics", value="")
+        filtered = [s for s in subtopic_choices if sub_filter.lower() in s.lower()] if sub_filter else subtopic_choices
+        options = ["All subtopics"] + filtered + ["Other (type manually)"]
+        pick = st.selectbox("📙 Subtopic", options=options, index=0)
 
-    # Subject: selectbox with DB-driven subjects but still editable
-    subject_ui = st.selectbox("Subject (pick or type)", options=[""] + subjects, index=0)
-    subject_ui = st.text_input("Or type Subject (overrides selection)", value=subject_ui)
-
-    subtopic = st.text_input("Subtopic (optional)", value="", placeholder="Leave empty to see all subtopics")
-
+        if pick == "All subtopics":
+            subtopic = ""   # means no filter
+        elif pick == "Other (type manually)":
+            subtopic = st.text_input("Type subtopic manually").strip()
+        else:
+            subtopic = pick
+    else:
+        subtopic = st.text_input("📙 Subtopic (type here if none found)").strip()                                                                                                                                                                                          
+                                                                                                  
+                                                                                                                                                                                                    
 with controls_right:
     st.markdown("**View options**")
     view_options = ["Students", "Subtopics"]
