@@ -771,39 +771,39 @@ if ss.get("remedial_ready", False):
                         if not ss["remedial_answers"].get(rqid):
                             missing_any = True
                             break
-                                  
-                if missing_any:
-                    st.error("⚠ Please answer all remedial questions before submitting.")
-                else:
-                    # proceed to grade — use the same rqid logic below when reading answers/awarding marks
-                    rem_total, rem_earned = 0, 0
-                    for idx_row, r in rem_set.iterrows():
-                        rqid = str(r.get("RemedialQuestionID", "") or "").strip()
-                        if not rqid:
-                            rqid = str(r.get("MainQuestionID", "") or "").strip()
-                        if not rqid:
-                            rqid = f"R{idx_row}"
-                        correct = get_correct_value(r)
-                        given   = str(ss["remedial_answers"].get(rqid, "")).strip()
-                        marks   = int(r.get("Marks") or 1)
-                        awarded = marks if (given and given == correct) else 0
-                        rem_total  += marks
-                        rem_earned += awarded
+                                     
+                    if missing_any:
+                        st.error("⚠ Please answer all remedial questions before submitting.")
+                    else:
+                        # proceed to grade — use the same rqid logic below when reading answers/awarding marks
+                        rem_total, rem_earned = 0, 0
+                        for idx_row, r in rem_set.iterrows():
+                            rqid = str(r.get("RemedialQuestionID", "") or "").strip()
+                            if not rqid:
+                                rqid = str(r.get("MainQuestionID", "") or "").strip()
+                            if not rqid:
+                                rqid = f"R{idx_row}"
+                            correct = get_correct_value(r)
+                            given   = str(ss["remedial_answers"].get(rqid, "")).strip()
+                            marks   = int(r.get("Marks") or 1)
+                            awarded = marks if (given and given == correct) else 0
+                            rem_total  += marks
+                            rem_earned += awarded
                                  
-                        # Save each remedial response in background
-                        run_in_background(
-                            append_response_row,
-                            datetime.now().isoformat(),
-                            ss["student_info"].get("Student_ID", ""),
-                            ss["student_info"].get("StudentName", ""),
-                            ss["student_info"].get("Tuition_Code", ""),
-                            subject, subtopic_id, rqid, given, correct, awarded, "Remedial"
-                        )
+                            # Save each remedial response in background
+                            run_in_background(
+                                append_response_row,
+                                datetime.now().isoformat(),
+                                ss["student_info"].get("Student_ID", ""),
+                                ss["student_info"].get("StudentName", ""),
+                                ss["student_info"].get("Tuition_Code", ""),
+                                subject, subtopic_id, rqid, given, correct, awarded, "Remedial"
+                            )
                                   
-                    ss["remedial_results"] = {"total": rem_total, "earned": rem_earned}
-                    ss["remedial_submitted"] = True
-                    st.success("Remedial submitted — well done!")
-                    st.balloons()
+                        ss["remedial_results"] = {"total": rem_total, "earned": rem_earned}
+                        ss["remedial_submitted"] = True
+                        st.success("Remedial submitted — well done!")
+                        st.balloons()
                         # no st.rerun() required; UI below will show review
 
             else:
