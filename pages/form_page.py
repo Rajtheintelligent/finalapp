@@ -766,8 +766,7 @@ if ss.get("remedial_ready", False):
                         if not rqid:
                             rqid = str(r.get("MainQuestionID", "") or "").strip()
                         if not rqid:
-                        # fallback: use the dataframe index to produce deterministic id
-                        rqid = f"R{idx_row}"
+                            rqid = f"R{idx_row}"
                                 
                     if not ss["remedial_answers"].get(rqid):
                         missing_any = True
