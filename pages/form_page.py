@@ -766,11 +766,11 @@ if ss.get("remedial_ready", False):
                         if not rqid:
                             rqid = str(r.get("MainQuestionID", "") or "").strip()
                         if not rqid:
-                            rqid = f"R{idx_row}"
-                                
-                    if not ss["remedial_answers"].get(rqid):
-                        missing_any = True
-                        break
+                            rqid = f"R{idx_row}"  
+                            
+                        if not ss["remedial_answers"].get(rqid):
+                            missing_any = True
+                            break
                                   
                 if missing_any:
                     st.error("⚠ Please answer all remedial questions before submitting.")
