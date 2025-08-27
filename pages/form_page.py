@@ -516,7 +516,7 @@ if not ss["main_submitted"]:
             ss["remedial_ready"] = True
             ss["remedial_pending"] = False
             # Immediately rerun so the UI replaces the main form with review (prevents stacked display)
-            st.experimental_rerun()              #nagaraj note this on line 519
+            st.rerun()              #nagaraj note this on line 519
 
 # --- Remove immediate parent email send here (we'll send after the chart/pdf is ready) ---
 
@@ -641,19 +641,19 @@ if ss.get("main_submitted", False):
             except Exception as e:
                 st.warning(f"Could not queue parent email: {e}")
                                 
-# Student email (explicit)
-if st.button("📧 Send Copy to My Email", key=f"email_main_{subject}_{subtopic_id}"):
-    student_email = ss.get("student_info", {}).get("StudentEmail", "")
-    if not student_email:
-        st.error("No student email found in register.")
-    else:
-        # build pdf and send in background
-        pdf_bytes = build_pdf_bytes(subject, subtopic_id, res, fig, ss)
-        try:
-            run_in_background(send_report_to_student, student_email, pdf_bytes)
-            st.success("📧 Report queued to be sent to your email.")
-        except Exception as e:
-            st.error(f"Could not queue sending email: {e}")
+    # Student email (explicit)
+    if st.button("📧 Send Copy to My Email", key=f"email_main_{subject}_{subtopic_id}"):
+        student_email = ss.get("student_info", {}).get("StudentEmail", "")
+        if not student_email:
+            st.error("No student email found in register.")
+        else:
+            # build pdf and send in background
+            pdf_bytes = build_pdf_bytes(subject, subtopic_id, res, fig, ss)
+            try:
+                run_in_background(send_report_to_student, student_email, pdf_bytes)
+                st.success("📧 Report queued to be sent to your email.")
+            except Exception as e:
+                st.error(f"Could not queue sending email: {e}")
 
 # ------------------ REMEDIAL (lazy, cached, paginated) ------------------
 # Only render remedial UI once remedial_ready is True
