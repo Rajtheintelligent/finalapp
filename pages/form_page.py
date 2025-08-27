@@ -619,9 +619,7 @@ if ss.get("main_submitted", False):
 
     st.pyplot(fig)
         # Streamlit returns True only on click; this block is rarely triggered in some versions,
-        # we instead present a proper button below to build+download.
-        pass
-
+    
     # Provide explicit download and email builders (build on demand)
     if st.button("Build & Download PDF Report"):
         # build pdf (blocking but user triggered)
