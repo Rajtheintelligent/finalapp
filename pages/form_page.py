@@ -515,6 +515,8 @@ if not ss["main_submitted"]:
             # mark remedial ready immediately (no st.rerun())
             ss["remedial_ready"] = True
             ss["remedial_pending"] = False
+            # Immediately rerun so the UI replaces the main form with review (prevents stacked display)
+            st.experimental_rerun()              #nagaraj note this on line 519
 
 # --- Remove immediate parent email send here (we'll send after the chart/pdf is ready) ---
 
@@ -616,15 +618,6 @@ if ss.get("main_submitted", False):
                     color=text, fontsize=11, weight="bold")
 
     st.pyplot(fig)
-
-    # --- PDF build only when user clicks Download or Send ---
-    if st.download_button(
-        "📄 Download PDF Report",
-        data=b"",  # initially empty to avoid building until clicked
-        file_name=f"report_{ss['student_info'].get('Student_ID','')}_{subtopic_id}.pdf",
-        mime="application/pdf",
-        key=f"download_main_init_{subject}_{subtopic_id}"
-    ):
         # Streamlit returns True only on click; this block is rarely triggered in some versions,
         # we instead present a proper button below to build+download.
         pass
@@ -708,21 +701,29 @@ if ss.get("remedial_ready", False):
 
             if not ss["remedial_submitted"]:
                 with st.form("remedial_form"):
-                    for j, r in enumerate(page_slice.itertuples(index=False), start=start + 1):
-                        rqid  = str(getattr(r, "RemedialQuestionID", "")).strip() or f"R{j}"
-                        rtext = str(getattr(r, "QuestionText", "")).strip()
-                        rimg  = normalize_img_url(getattr(r, "ImageURL", ""))
-                        rhint = str(getattr(r, "Hint", "")).strip()
-
+                    # iterate with iterrows so we can derive a stable id from the dataframe index
+                    for offset, (idx_row, r) in enumerate(page_slice.iterrows(), start=1):
+                        # stable remedial question id:
+                        # prefer RemedialQuestionID, else MainQuestionID, else generate R<seq>
+                        rqid = str(r.get("RemedialQuestionID", "") or "").strip()
+                        if not rqid:
+                            rqid = str(r.get("MainQuestionID", "") or "").strip()
+                        if not rqid:
+                            rqid = f"R{start + offset}"
+                               
+                        rtext = str(r.get("QuestionText", "")).strip()
+                        rimg  = normalize_img_url(r.get("ImageURL", ""))
+                        rhint = str(r.get("Hint", "")).strip()
+                                 
                         opts = [
-                            str(getattr(r, "Option_A", "") or "").strip(),
-                            str(getattr(r, "Option_B", "") or "").strip(),
-                            str(getattr(r, "Option_C", "") or "").strip(),
-                            str(getattr(r, "Option_D", "") or "").strip()
+                            str(r.get("Option_A", "") or "").strip(),
+                            str(r.get("Option_B", "") or "").strip(),
+                            str(r.get("Option_C", "") or "").strip(),
+                            str(r.get("Option_D", "") or "").strip()
                         ]
                         opts = [o for o in opts if o]
                         disp_opts = stable_shuffle(opts, seed_base + f"::ROPT::{rqid}")
-
+                                
                         st.markdown(f"**{rqid}**<br>{rtext}", unsafe_allow_html=True)
                         if rimg:
                             img_bytes = fetch_image_bytes(rimg)
@@ -730,11 +731,11 @@ if ss.get("remedial_ready", False):
                                 st.image(img_bytes, use_container_width=True)
                             else:
                                 st.markdown("_Image could not be loaded_")
-
+                                         
                         if rhint:
                             with st.expander("💡 Hint"):
                                 st.write(rhint)
-
+                                                 
                         prev = ss["remedial_answers"].get(rqid, None)
                         sel = st.radio(
                             "Select your answer:",
@@ -748,45 +749,64 @@ if ss.get("remedial_ready", False):
                     submit_remedial = st.form_submit_button("Submit Remedial")
 
                 # pagination controls for non-submitted
+            if total_pages > 1 and not ss.get("remedial_submitted", False):
                 c1, c2, c3 = st.columns([1, 1, 1])
-                with c1:
-                    if st.button("◀ Prev", disabled=page <= 0):
-                        ss["remedial_page"] = max(0, page - 1)
-                        st.experimental_rerun()
-                with c3:
-                    if st.button("Next ▶", disabled=page >= total_pages - 1):
-                        ss["remedial_page"] = min(total_pages - 1, page + 1)
-                        st.experimental_rerun()
+                if c1.button("◀ Prev", disabled=page <= 0):
+                    ss["remedial_page"] = max(0, page - 1)
+                    st.experimental_rerun()
+                # center cell left intentionally blank to keep layout balanced
+                if c3.button("Next ▶", disabled=page >= total_pages - 1):
+                    ss["remedial_page"] = min(total_pages - 1, page + 1)
+                    st.experimental_rerun()
 
                 if submit_remedial:
                     # NOTE: only grade the full rem_set (not just page slice)
-                    if any(not ss["remedial_answers"].get(str(getattr(r, "RemedialQuestionID","") or "").strip()) for r in rem_set.itertuples(index=False)):
-                        st.error("⚠ Please answer all remedial questions before submitting.")
-                    else:
-                        rem_total, rem_earned = 0, 0
-                        for _, r in rem_set.iterrows():
-                            rqid    = str(r.get("RemedialQuestionID", "")).strip()
-                            correct = get_correct_value(r)
-                            given   = str(ss["remedial_answers"].get(rqid, "")).strip()
-                            marks   = int(r.get("Marks") or 1)
-                            awarded = marks if (given and given == correct) else 0
-                            rem_total  += marks
-                            rem_earned += awarded
-
-                            # Save each remedial response in background
-                            run_in_background(
-                                append_response_row,
-                                datetime.now().isoformat(),
-                                ss["student_info"].get("Student_ID", ""),
-                                ss["student_info"].get("StudentName", ""),
-                                ss["student_info"].get("Tuition_Code", ""),
-                                subject, subtopic_id, rqid, given, correct, awarded, "Remedial"
-                            )
-
-                        ss["remedial_results"] = {"total": rem_total, "earned": rem_earned}
-                        ss["remedial_submitted"] = True
-                        st.success("Remedial submitted — well done!")
-                        st.balloons()
+                    missing_any = False
+                    for idx_row, r in rem_set.iterrows():
+                        # stable id: RemedialQuestionID -> MainQuestionID -> generated R<seq_based_on_df_index>
+                        rqid = str(r.get("RemedialQuestionID", "") or "").strip()
+                        if not rqid:
+                            rqid = str(r.get("MainQuestionID", "") or "").strip()
+                        if not rqid:
+                        # fallback: use the dataframe index to produce deterministic id
+                        rqid = f"R{idx_row}"
+                                
+                    if not ss["remedial_answers"].get(rqid):
+                        missing_any = True
+                        break
+                                  
+                if missing_any:
+                    st.error("⚠ Please answer all remedial questions before submitting.")
+                else:
+                    # proceed to grade — use the same rqid logic below when reading answers/awarding marks
+                    rem_total, rem_earned = 0, 0
+                    for idx_row, r in rem_set.iterrows():
+                        rqid = str(r.get("RemedialQuestionID", "") or "").strip()
+                        if not rqid:
+                            rqid = str(r.get("MainQuestionID", "") or "").strip()
+                        if not rqid:
+                            rqid = f"R{idx_row}"
+                        correct = get_correct_value(r)
+                        given   = str(ss["remedial_answers"].get(rqid, "")).strip()
+                        marks   = int(r.get("Marks") or 1)
+                        awarded = marks if (given and given == correct) else 0
+                        rem_total  += marks
+                        rem_earned += awarded
+                                 
+                        # Save each remedial response in background
+                        run_in_background(
+                            append_response_row,
+                            datetime.now().isoformat(),
+                            ss["student_info"].get("Student_ID", ""),
+                            ss["student_info"].get("StudentName", ""),
+                            ss["student_info"].get("Tuition_Code", ""),
+                            subject, subtopic_id, rqid, given, correct, awarded, "Remedial"
+                        )
+                                  
+                    ss["remedial_results"] = {"total": rem_total, "earned": rem_earned}
+                    ss["remedial_submitted"] = True
+                    st.success("Remedial submitted — well done!")
+                    st.balloons()
                         # no st.rerun() required; UI below will show review
 
             else:
