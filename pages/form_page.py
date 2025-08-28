@@ -938,7 +938,7 @@ if ss.get("remedial_ready", False):
                                 
                         st.markdown("---")
                                      
-                        # Remedial chart
+                    # Remedial chart
                     correct_q = res["earned"]
                     incorrect_q = res["total"] - res["earned"]
                     labels = ["Correct", "Incorrect"]
