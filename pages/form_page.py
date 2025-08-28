@@ -837,9 +837,9 @@ if ss.get("remedial_ready", False):
                         )
                         ss["remedial_answers"][rqid] = sel
                         st.markdown("---")
-
+                                        
                     submit_remedial = st.form_submit_button("Submit Remedial")
-
+                                        
                 if submit_remedial:
                     # NOTE: only grade the full rem_set (not just page slice)
                     missing_any = False
@@ -888,65 +888,80 @@ if ss.get("remedial_ready", False):
                         st.success("Remedial submitted — well done!")
                         st.balloons()
                         # no st.rerun() required; UI below will show review
-                                                             
-                        # REVIEW of remedial (after submission)
-                        res = ss.get("remedial_results", {"total": 0, "earned": 0})
-                        st.markdown("### Remedial Quiz Review")
-                        st.success(f"Score: {res['earned']}/{res['total']}")
-                        for _, r in rem_set.iterrows():
-                            rqid    = str(r.get("RemedialQuestionID", "")).strip()
-                            rtext   = str(r.get("QuestionText", "")).strip()
-                            rimg    = normalize_img_url(r.get("ImageURL", ""))
-                            correct = get_correct_value(r)
+                if ss.get("remedial_submitted", False):
+                    res = ss.get("remedial_results", {"total": 0, "earned": 0})
+                    st.markdown("### Remedial Quiz Review")
+                    st.success(f"Score: {res['earned']}/{res['total']}")
+                    for _, r in rem_set.iterrows():
+                        rqid    = str(r.get("RemedialQuestionID", "")).strip()
+                        rtext   = str(r.get("QuestionText", "")).strip()
+                        rimg    = normalize_img_url(r.get("ImageURL", ""))
+                        correct = get_correct_value(r)
                                         
-                            opts = [
-                                str(r.get("Option_A", "") or "").strip(),
-                                str(r.get("Option_B", "") or "").strip(),
-                                str(r.get("Option_C", "") or "").strip(),
-                                str(r.get("Option_D", "") or "").strip()
-                            ]
-                            opts = [o for o in opts if o]
-                            disp_opts = stable_shuffle(opts, seed_base + f"::ROPT::{rqid}")
-
-                            st.markdown(f"**{rqid}**<br>{rtext}", unsafe_allow_html=True)
-                            if rimg:
-                                img_bytes = fetch_image_bytes(rimg)
-                                if img_bytes:
-                                    st.image(img_bytes, use_container_width=True)
+                        opts = [
+                            str(r.get("Option_A", "") or "").strip(),
+                            str(r.get("Option_B", "") or "").strip(),
+                            str(r.get("Option_C", "") or "").strip(),
+                            str(r.get("Option_D", "") or "").strip()
+                        ]
+                        opts = [o for o in opts if o]
+                        disp_opts = stable_shuffle(opts, seed_base + f"::ROPT::{rqid}")
+                                
+                        st.markdown(f"**{rqid}**<br>{rtext}", unsafe_allow_html=True)
+                        if rimg:
+                            img_bytes = fetch_image_bytes(rimg)
+                            if img_bytes:
+                                st.image(img_bytes, use_container_width=True)
+                            else:
+                                st.markdown("_Image could not be loaded_")
+                    
+                        student_ans = ss["remedial_answers"].get(rqid, "")
+                        for opt in disp_opts:
+                            if opt == student_ans:
+                                if opt == correct:
+                                    st.markdown(
+                                        f"<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:5px; display:flex; justify-content:space-between;'><span>{opt}</span><span>✅ Correct</span></div>", 
+                                        unsafe_allow_html=True
+                                    )
                                 else:
-                                    st.markdown("_Image could not be loaded_")
-                            student_ans = ss["remedial_answers"].get(rqid, "")
-                            for opt in disp_opts:
-                                if opt == student_ans:
-                                    if opt == correct:
-                                        st.markdown(f"<div style='background-color: rgba(0,255,0,0.15); padding:4px; border-radius:5px; display:flex; justify-content:space-between;'><span>{opt}</span><span>✅ Correct</span></div>", unsafe_allow_html=True)
-                                    else:
-                                        st.markdown(f"<div style='background-color: rgba(255,0,0,0.15); padding:4px; border-radius:5px; display:flex; justify-content:space-between;'><span>{opt}</span><span>❌ Incorrect</span></div>", unsafe_allow_html=True)
-                                elif opt == correct:
-                                    st.markdown(f"<div style='display:flex; justify-content:space-between;'><span>{opt}</span><span>✅ Correct</span></div>", unsafe_allow_html=True)
-                                else:
-                                    st.markdown(f"<div>{opt}</div>", unsafe_allow_html=True)
-                            st.markdown("---")
-
+                                    st.markdown(
+                                        f"<div style='background-color: rgba(255,0,0,0.15); padding:4px; border-radius:5px; display:flex; justify-content:space-between;'><span>{opt}</span><span>❌ Incorrect</span></div>", 
+                                        unsafe_allow_html=True
+                                    )
+                            elif opt == correct:
+                                st.markdown(
+                                    f"<div style='display:flex; justify-content:space-between;'><span>{opt}</span><span>✅ Correct</span></div>", 
+                                    unsafe_allow_html=True
+                                )
+                            else:
+                                st.markdown(f"<div>{opt}</div>", unsafe_allow_html=True)
+                                
+                        st.markdown("---")
+                                     
                         # Remedial chart
-                        correct_q = res["earned"]
-                        incorrect_q = res["total"] - res["earned"]
-                        labels = ["Correct", "Incorrect"]
-                        values = [correct_q, incorrect_q]
-
-                        base    = st.get_option("theme.base") or "light"
-                        primary = st.get_option("theme.primaryColor") or "#4CAF50"
-                        text    = st.get_option("theme.textColor") or ("#31333F" if base == "light" else "#FAFAFA")
-                        bg      = st.get_option("theme.backgroundColor") or ("#FFFFFF" if base == "light" else "#0E1117")
-                        sbg     = st.get_option("theme.secondaryBackgroundColor") or ("#F5F5F5" if base == "light" else "#262730")
-                        error   = "#E53935" if base == "light" else "#FF6B6B"
-
-                        fig, ax = plt.subplots(figsize=(4,4))
-                        fig.patch.set_facecolor(bg)
-                        ax.set_facecolor(sbg)
-                        wedges, texts, autotexts = ax.pie(values, labels=labels, autopct='%1.0f%%', colors=[primary, error], startangle=90, wedgeprops={"linewidth":1, "edgecolor":bg}, textprops={"color": text, "fontsize":11})
-                        ax.set_title("Remedial Performance", color=text, fontsize=14, weight="bold", pad=10)
-                        for autotext in autotexts:
-                            autotext.set_color("white")
-                            autotext.set_weight("bold")
-                        st.pyplot(fig)
+                    correct_q = res["earned"]
+                    incorrect_q = res["total"] - res["earned"]
+                    labels = ["Correct", "Incorrect"]
+                    values = [correct_q, incorrect_q]
+                               
+                    base    = st.get_option("theme.base") or "light"
+                    primary = st.get_option("theme.primaryColor") or "#4CAF50"
+                    text    = st.get_option("theme.textColor") or ("#31333F" if base == "light" else "#FAFAFA")
+                    bg      = st.get_option("theme.backgroundColor") or ("#FFFFFF" if base == "light" else "#0E1117")
+                    sbg     = st.get_option("theme.secondaryBackgroundColor") or ("#F5F5F5" if base == "light" else "#262730")
+                    error   = "#E53935" if base == "light" else "#FF6B6B"
+                                 
+                    fig, ax = plt.subplots(figsize=(4,4))
+                    fig.patch.set_facecolor(bg)
+                    ax.set_facecolor(sbg)
+                    wedges, texts, autotexts = ax.pie(
+                        values, labels=labels, autopct='%1.0f%%',
+                        colors=[primary, error], startangle=90,
+                        wedgeprops={"linewidth":1, "edgecolor":bg},
+                        textprops={"color": text, "fontsize":11}
+                    )
+                    ax.set_title("Remedial Performance", color=text, fontsize=14, weight="bold", pad=10)
+                    for autotext in autotexts:
+                        autotext.set_color("white")
+                        autotext.set_weight("bold")
+                    st.pyplot(fig)
