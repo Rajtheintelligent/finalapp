@@ -700,14 +700,14 @@ if ss.get("remedial_ready", False):
             if not ss["remedial_submitted"]:
                 with st.form("remedial_form"):
                     # iterate with iterrows so we can derive a stable id from the dataframe index
-                    for offset, (idx_row, r) in enumerate(page_slice.iterrows(), start=1):
+                    for offset, (idx_row, r) in enumerate(rem_set.iterrows(), start=1):
                         # stable remedial question id:
                         # prefer RemedialQuestionID, else MainQuestionID, else generate R<seq>
                         rqid = str(r.get("RemedialQuestionID", "") or "").strip()
                         if not rqid:
                             rqid = str(r.get("MainQuestionID", "") or "").strip()
                         if not rqid:
-                            rqid = f"R{start + offset}"
+                            rqid = f"R{offset}"
                                
                         rtext = str(r.get("QuestionText", "")).strip()
                         rimg  = normalize_img_url(r.get("ImageURL", ""))
@@ -745,17 +745,6 @@ if ss.get("remedial_ready", False):
                         st.markdown("---")
 
                     submit_remedial = st.form_submit_button("Submit Remedial")
-
-                # pagination controls for non-submitted
-#            if total_pages > 1 and not ss.get("remedial_submitted", False):
-#                c1, c2, c3 = st.columns([1, 1, 1])
-#                if c1.button("◀ Prev", disabled=page <= 0):
-#                    ss["remedial_page"] = max(0, page - 1)
-#                    st.experimental_rerun()
-#                # center cell left intentionally blank to keep layout balanced
-#                if c3.button("Next ▶", disabled=page >= total_pages - 1):
-#                    ss["remedial_page"] = min(total_pages - 1, page + 1)
-#                    st.experimental_rerun()
 
                 if submit_remedial:
                     # NOTE: only grade the full rem_set (not just page slice)
