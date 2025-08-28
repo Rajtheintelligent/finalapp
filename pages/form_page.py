@@ -354,6 +354,23 @@ if verify_submit:
                 "Student_ID": student_id.strip(),
                 "Password": student_password.strip(),  
             }
+            # 🔎 --- NEW: Check if student already attempted this quiz ---
+#            try:
+#                resp_records = responses_ws.get_all_records()
+#                resp_df = pd.DataFrame(resp_records)
+#                
+#                already_main = (
+#                    (resp_df["Student_ID"].astype(str).str.strip() == student_id.strip()) &
+#                    (resp_df["Tuition_Code"].astype(str).str.strip() == tuition_code.strip()) &
+#                    (resp_df["Subtopic"].astype(str).str.strip() == subtopic_id) &
+#                    (resp_df["Attempt_Type"].astype(str).str.strip() == "Main")
+#                ).any()
+#                
+#                if already_main:
+#                    st.error("❌ You have already submitted this Main Quiz. Please wait for your teacher to share another form.")
+#                    st.stop()
+#            except Exception as e:
+#                st.warning(f"⚠ Could not verify previous attempts: {e}")           
         else:
             st.error("❌ Invalid Tuition Code or Student ID. Please try again.")
 
@@ -361,7 +378,86 @@ if not ss.get("student_verified", False):
     st.stop()
 
 # ---------- ANTI-CHEAT (same) ----------
-ANTI_CHEAT_JS = """ ... (unchanged from original) ... """
+ANTI_CHEAT_JS = """ 
+<script>
+// ===== CONFIG =====
+const UNLOCK_CODE = new URLSearchParams(window.location.search).get('unlock_code');
+
+// ===== Utility: lock screen =====
+function lockQuiz(reason) {
+  if (UNLOCK_CODE) { 
+    localStorage.removeItem('quiz_locked');
+    return; // teacher unlocked
+  }
+  
+  localStorage.setItem('quiz_locked', '1');
+
+  // Disable all inputs/buttons
+  document.querySelectorAll('input, button, select, textarea').forEach(el => el.disabled = true);
+
+  // Overlay
+  let overlay = document.createElement('div');
+  overlay.style.position = 'fixed';
+  overlay.style.top = 0;
+  overlay.style.left = 0;
+  overlay.style.width = '100%';
+  overlay.style.height = '100%';
+  overlay.style.background = 'rgba(0,0,0,0.85)';
+  overlay.style.color = 'white';
+  overlay.style.display = 'flex';
+  overlay.style.flexDirection = 'column';
+  overlay.style.justifyContent = 'center';
+  overlay.style.alignItems = 'center';
+  overlay.style.zIndex = 9999;
+  overlay.innerHTML = `
+    <h2 style="color: red; font-size: 28px;">🚫 Quiz Locked!</h2>
+    <p style="max-width: 80%; text-align: center;">
+      You switched away from the quiz.<br>
+      Please contact your teacher to reopen it.
+    </p>
+  `;
+  document.body.appendChild(overlay);
+
+  // Vibrate on mobile
+  if (navigator.vibrate) {
+    navigator.vibrate([200, 100, 200]);
+  }
+}
+
+// ===== Check lock status on load =====
+if (localStorage.getItem('quiz_locked') && !UNLOCK_CODE) {
+  window.addEventListener('load', () => lockQuiz("already locked"));
+}
+
+// ===== Anti-cheat events =====
+document.addEventListener('contextmenu', event => event.preventDefault());
+document.addEventListener('selectstart', event => event.preventDefault());
+document.addEventListener('copy', event => event.preventDefault());
+document.addEventListener('keydown', function(e) {
+  const k = e.key.toLowerCase();
+  if ((e.ctrlKey || e.metaKey) && ['c','x','p','s','u','a'].includes(k)) {
+    e.preventDefault();
+  }
+});
+
+function triggerCheatLock() {
+  lockQuiz("tab switch");
+}
+
+document.addEventListener("visibilitychange", function() {
+  if (document.hidden) triggerCheatLock();
+});
+window.addEventListener("blur", triggerCheatLock, { passive: true });
+</script>
+
+<style>
+* {
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+</style>
+"""
 st.markdown(ANTI_CHEAT_JS, unsafe_allow_html=True)
 
 # ---------- LOAD MAIN QUESTIONS (lazy remedial load: only main now) ----------
