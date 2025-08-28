@@ -239,7 +239,7 @@ except Exception:
     import time
     if "last_refresh" not in st.session_state:
         st.session_state["last_refresh"] = time.time()
-    if time.time() - st.session_state["last_refresh"] > 5:
+    if time.time() - st.session_state["last_refresh"] > 30:
         st.session_state["last_refresh"] = time.time()
         st.experimental_rerun()
 
