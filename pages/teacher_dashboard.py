@@ -226,7 +226,7 @@ with controls_right:
     selected_view = st.selectbox("View", options=view_options, index=0)
 
 # Resolve subject mapping and normalize subtopic
-subject = resolve_subject_value(subject_ui)
+subject = resolve_subject_value(subject)
 subtopic = normalize_subtopic_param(subtopic)
 
 # =============================
