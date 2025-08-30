@@ -55,15 +55,15 @@ with st.expander("SSC", expanded=True):
             # navigate to the multipage app page named "SSC_Maths"
             st.experimental_set_query_params(page="SSC_Maths")
             st.query_params["page"] = "SSC_Maths"
-            st.experimental_rerun()
+            st.rerun()
     with col2:
         if st.button("Science", key="btn_ssc_science"):
             st.query_params["page"] = "SSC_Science"
-            st.experimental_rerun()
+            st.rerun()
     with col3:
         if st.button("English", key="btn_ssc_english"):
             st.query_params["page"] = "SSC_English"
-            st.experimental_rerun()
+            st.rerun()
 
     st.markdown("---")
     # two additional buttons underneath
@@ -71,9 +71,10 @@ with st.expander("SSC", expanded=True):
     with c1:
         if st.button("Student Drilldown", key="btn_student_drilldown"):
             st.query_params["page"] = "Student_Drilldown"
-            st.experimental_rerun()
+            st.rerun()
     with c2:
         if st.button("Teacher Dashboard", key="btn_teacher_dashboard"):
             st.query_params["page"] = "Teacher_Dashboard"
-            st.experimental_rerun()
+            st.rerun()
+
 
