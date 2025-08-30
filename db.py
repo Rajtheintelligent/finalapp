@@ -37,12 +37,11 @@ class Response(Base):
     correct_answer = Column(String(255))
     is_correct = Column(Boolean)
     quiz_id = Column(String(100), index=True)
-    
     # NEW — optional quiz identifier to group responses as one "main quiz"
     quiz_id = Column(String(100), index=True, nullable=True)
-
     student = relationship("Student", back_populates="responses")
-
+    question_id = Column(Integer, ForeignKey("questions.id"))
+    question = relationship("Question", back_populates="responses")
 
 class DashboardNotify(Base):
     __tablename__ = "dashboard_notify"
@@ -51,6 +50,17 @@ class DashboardNotify(Base):
     subject = Column(String(100), index=True)
     subtopic = Column(String(100), index=True)
     notified = Column(Boolean, default=False)
+
+class Question(Base):
+    __tablename__ = "questions"
+    id = Column(Integer, primary_key=True, index=True)
+    subject = Column(String(100), index=True)
+    subtopic = Column(String(100), index=True)
+    question_no = Column(String(50), index=True)
+    question_text = Column(String(1000))
+
+    # optional relationship
+    responses = relationship("Response", back_populates="question")
 
 
 # NOTE: create_all() will create missing tables, but it WILL NOT add new columns
@@ -135,6 +145,7 @@ def get_batch_performance(batch_code: str, subject: str, subtopic: str = None) -
     """
     db = SessionLocal()
     try:
+        # Build base query
         q = (
             db.query(
                 Student.name.label("Student_Name"),
@@ -145,35 +156,58 @@ def get_batch_performance(batch_code: str, subject: str, subtopic: str = None) -
                 Response.is_correct.label("is_correct"),
             )
             .join(Response, Student.id == Response.student_id)
+            .join(
+                Question,
+                (Question.subject == Response.subject) &
+                (Question.subtopic == Response.subtopic) &
+                (Question.question_no == Response.question_no)
+            )
             .filter(
-                Student.class_code == batch_code.strip(),
+                func.lower(Student.class_code) == func.lower(batch_code.strip()),
                 func.lower(Response.subject) == func.lower(subject.strip())
             )
         )
+
+        # Apply subtopic filter if given
         if subtopic:
             q = q.filter(func.lower(Response.subtopic) == func.lower(subtopic.strip()))
 
+        # Execute
         rows = q.all()
+
+        # Debug logging
         print("DEBUG batch_code:", batch_code)
         print("DEBUG subject:", subject)
         print("DEBUG subtopic:", subtopic)
         print("DEBUG rows fetched:", len(rows))
         if rows:
             print("Sample row:", rows[0])
+
+        # If no rows, return empty DataFrame with expected columns
         if not rows:
             return pd.DataFrame(columns=[
-                "Student_Name","Student_Email","Tuition_Code","Subject","Subtopic","Correct","Incorrect"
+                "Student_Name", "Student_Email", "Tuition_Code", "Subject",
+                "Subtopic", "Correct", "Incorrect"
             ])
 
+        # Convert to DataFrame
         df = pd.DataFrame(rows, columns=[
-            "Student_Name","Student_Email","Tuition_Code","Subject","Subtopic","is_correct"
+            "Student_Name", "Student_Email", "Tuition_Code",
+            "Subject", "Subtopic", "is_correct"
         ])
 
+        # Aggregate correct/incorrect counts
         perf = (
-            df.groupby(["Student_Name","Student_Email","Tuition_Code","Subject","Subtopic"], as_index=False)
-              .agg(Correct=("is_correct", lambda x: int(x.sum())),
-                   Incorrect=("is_correct", lambda x: int((~x).sum())))
+            df.groupby(
+                ["Student_Name", "Student_Email", "Tuition_Code", "Subject", "Subtopic"],
+                as_index=False
+            )
+            .agg(
+                Correct=("is_correct", lambda x: int(x.sum())),
+                Incorrect=("is_correct", lambda x: int((~x).sum()))
+            )
         )
+
         return perf
     finally:
         db.close()
