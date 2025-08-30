@@ -1,29 +1,50 @@
 import streamlit as st
-# --- Sidebar lock state (persistent in session) ---
-if "sidebar_unlocked" not in st.session_state:
-    st.session_state.sidebar_unlocked = False
 
-# Replace this with a password of your choice
-SIDEBAR_PASSWORD = "aaaa"  # <<< change this!
+# ------------------------ Page Config ------------------------
+st.set_page_config(
+    page_title="Grade 10 Assessment Hub",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# Sidebar content - only visible when unlocked
-if st.session_state.sidebar_unlocked:
-    st.sidebar.title("🔧 Select Options (Unlocked)")
-    board = st.sidebar.selectbox("Select Board", ["SSC", "ICSE"])
-    subject = st.sidebar.selectbox("Select Subject", ["Mathematics", "Science", "English", "Social Studies"])
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("📬 **[Feedback Form](https://forms.gle/your-feedback-form)**")
-    # small control to lock again
-    if st.sidebar.button("🔒 Lock sidebar"):
-        st.session_state.sidebar_unlocked = False
-        st.experimental_rerun()
-else:
-    # minimal locked sidebar
-    st.sidebar.title("🔒 Sidebar Locked")
-    st.sidebar.info("Sidebar is hidden. Unlock from the main page to edit.")
+# ------------------------ Sidebar ------------------------
+st.sidebar.title("🔧 Select Options")
+board = st.sidebar.selectbox("Select Board", ["SSC", "ICSE"])
+subject = st.sidebar.selectbox("Select Subject", ["Mathematics", "Science", "English", "Social Studies"])
+st.sidebar.markdown("""
+---
+📬 **[Feedback Form](https://forms.gle/your-feedback-form)**
+""")
 
-# ---------------------- Main Page UI (box + buttons) ----------------------
-# Use an expander (native Streamlit widget that provides a boxed look) as the "rectangular border"
+# ------------------------ Main Page ------------------------
+st.title("📘 Grade 10 Assessment Web App")
+st.markdown("""
+Welcome to the Grade 10 Assessment Platform. Select a board and subject from the sidebar to begin.
+
+Use the navigation in the sidebar to access subject-wise assessments, tools, and subtopics.
+""")
+
+# ------------------------ Page Guide ------------------------
+if board == "SSC":
+    if subject == "Mathematics":
+        st.markdown("👉 Go to **SSC_Maths** page in the sidebar for Algebra and Geometry assessments.")
+    elif subject == "Science":
+        st.markdown("👉 Go to **SSC_Science** page for Physics, Chemistry and Biology.")
+    elif subject == "English":
+        st.markdown("👉 Go to **SSC_English** page for Grammar and Language Tools.")
+    elif subject == "Social Studies":
+        st.markdown("👉 Go to **SSC_Social_Studies** page for History and Geography.")
+
+elif board == "ICSE":
+    if subject == "Mathematics":
+        st.markdown("👉 Go to **ICSE_Maths** page in the sidebar for Algebra and Geometry assessments.")
+    elif subject == "Science":
+        st.markdown("👉 Go to **ICSE_Science** page for Physics, Chemistry and Biology.")
+    elif subject == "English":
+        st.markdown("👉 Go to **ICSE_English** page for Grammar and Language Tools.")
+    elif subject == "Social Studies":
+        st.markdown("👉 Go to **ICSE_Social_Studies** page for History and Geography.")
+
 with st.expander("SSC", expanded=True):
     st.write("Select an SSC subject to open its page:")
 
@@ -33,14 +54,15 @@ with st.expander("SSC", expanded=True):
         if st.button("Mathematics", key="btn_ssc_math"):
             # navigate to the multipage app page named "SSC_Maths"
             st.experimental_set_query_params(page="SSC_Maths")
+            st.query_params["page"] = "SSC_Maths"
             st.experimental_rerun()
     with col2:
         if st.button("Science", key="btn_ssc_science"):
-            st.experimental_set_query_params(page="SSC_Science")
+            st.query_params["page"] = "SSC_Science"
             st.experimental_rerun()
     with col3:
         if st.button("English", key="btn_ssc_english"):
-            st.experimental_set_query_params(page="SSC_English")
+            st.query_params["page"] = "SSC_English"
             st.experimental_rerun()
 
     st.markdown("---")
@@ -48,25 +70,10 @@ with st.expander("SSC", expanded=True):
     c1, c2 = st.columns(2)
     with c1:
         if st.button("Student Drilldown", key="btn_student_drilldown"):
-            st.experimental_set_query_params(page="student_Drilldown")
+            st.query_params["page"] = "Student_Drilldown"
             st.experimental_rerun()
     with c2:
         if st.button("Teacher Dashboard", key="btn_teacher_dashboard"):
-            st.experimental_set_query_params(page="teacher_Dashboard")
+            st.query_params["page"] = "Teacher_Dashboard"
             st.experimental_rerun()
-
-# ---------------------- Sidebar Unlock controls in MAIN area ----------------------
-st.write("")  # spacer
-if not st.session_state.sidebar_unlocked:
-    st.subheader("🔐 Unlock Sidebar (for your edits)")
-    pwd = st.text_input("Enter sidebar password", type="password", key="unlock_pwd")
-    if st.button("Unlock Sidebar", key="unlock_btn"):
-        if pwd == SIDEBAR_PASSWORD:
-            st.session_state.sidebar_unlocked = True
-            st.success("Sidebar unlocked. You can now edit the sidebar (visible only to you while unlocked).")
-            st.experimental_rerun()
-        else:
-            st.error("Wrong password. Try again.")
-else:
-    st.info("Sidebar is unlocked for you. Use the sidebar to make edits; press 'Lock sidebar' inside the sidebar when done.")
 
