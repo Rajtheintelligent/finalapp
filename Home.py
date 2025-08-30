@@ -1,3 +1,4 @@
+import streamlit as st
 # --- Sidebar lock state (persistent in session) ---
 if "sidebar_unlocked" not in st.session_state:
     st.session_state.sidebar_unlocked = False
@@ -68,3 +69,4 @@ if not st.session_state.sidebar_unlocked:
             st.error("Wrong password. Try again.")
 else:
     st.info("Sidebar is unlocked for you. Use the sidebar to make edits; press 'Lock sidebar' inside the sidebar when done.")
+
