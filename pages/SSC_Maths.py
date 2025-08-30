@@ -1,45 +1,90 @@
 import streamlit as st
 
-# --- Header: Home button + Title (use balanced column widths) ---
-# Give enough horizontal room to avoid wrapping the Home button text.
-col_home, col_title, col_spacer = st.columns([2, 14, 1])
+# ---------------- Page config ----------------
+st.set_page_config(
+    page_title="SSC Mathematics",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
+# ---------------- Sidebar ----------------
+st.sidebar.title("🔧 Select Parameters")
+board = st.sidebar.selectbox("Select Board", ["SSC", "ICSE"], index=0)
+# ensure subject is always defined
+subject = st.sidebar.selectbox("Select Subject", ["Mathematics", "Science", "English", "Social Studies"], index=0)
+
+# push feedback link to bottom (keeps using markdown only)
+st.sidebar.markdown("\n" * 10)
+st.sidebar.markdown("[📩 Feedback Form](https://example.com/feedback-form)")
+
+# ---------------- Header (Home button + Title) ----------------
+# balanced columns so Home button has enough width
+col_home, col_title = st.columns([2, 18])
 with col_home:
-    # Use a concise label with emoji so it remains compact
     if st.button("🏠 Home", key="home_top_left"):
+        # try switching to the Home page — catch and show helpful error if name mismatch
         try:
-            st.switch_page("Home.py")   # make sure filename matches exactly
-        except Exception:
-            st.error("Cannot switch to Home. Ensure `Home.py` exists in app root.")
+            # Replace "Home.py" with the exact page name if your main file differs.
+            st.switch_page("Home.py")
+        except Exception as e:
+            st.error(
+                "Unable to switch to Home. Ensure your main page filename is exactly 'Home.py' "
+                "or change the argument to st.switch_page(...) to match your file."
+            )
 
 with col_title:
-    # Slightly smaller than st.title but still prominent and looks neat
-    st.markdown("## 📘  SSC Mathematics")
+    st.markdown("## 📘 SSC Mathematics")
     st.caption("Use the branch selector below to choose Algebra or Geometry. Chapters for the chosen branch will appear below.")
 
-# --- Branch selector directly beneath the title ---
-# Keep the selectbox you asked for (compact and familiar)
+st.write("")  # small spacer
+
+# ---------------- Branch selector (beneath title) ----------------
 branch = None
-if st.session_state.get("subject", "Mathematics") == "Mathematics":
-    # Use a single full-width row for the dropdown so it doesn't squeeze
-    branch_col = st.columns([1])[0]
-    branch = branch_col.selectbox("Select Branch", ["Algebra", "Geometry"], key="branch_under_title")
+if subject == "Mathematics":
+    # selectbox always returns a value so branch is defined
+    branch = st.selectbox("Select Branch", ["Algebra", "Geometry"], key="branch_under_title")
 else:
     st.info("Select 'Mathematics' in the sidebar to enable branch selection.")
 
-# --- Helper: display subtopics (keeps your existing UI pattern) ---
+# ---------------- Helper: show subtopics (pure Streamlit) ----------------
 def show_subtopics(subtopics):
-    for topic, links in subtopics.items():
-        with st.expander(f"🔹 {topic}"):
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.link_button("Open Form", links.get("Form", "#"))
-            with col2:
-                st.link_button("Open Kahoot", links.get("Kahoot", "#"))
-            with col3:
-                st.link_button("Open Blooket", links.get("Blooket", "#"))
+    """
+    For each subtopic:
+     - Show links (Form / Kahoot / Blooket) as markdown links
+     - Provide a text_input prefilled with the Form URL for easy manual copy
+     - Provide a download button to save the link as a .txt file
+    """
+    for idx, (topic, links) in enumerate(subtopics.items()):
+        with st.expander(f"🔹 {topic}", expanded=False):
+            form_url = links.get("Form", "#")
+            kahoot = links.get("Kahoot", "#")
+            blooket = links.get("Blooket", "#")
 
-# --- If Mathematics + branch selected, show chapters and subtopics ---
+            # three columns: links | copy area
+            c1, c2 = st.columns([2, 3])
+            with c1:
+                # Use markdown links (pure Streamlit)
+                st.markdown(f"- [Open Form]({form_url})")
+                st.markdown(f"- [Open Kahoot]({kahoot})")
+                st.markdown(f"- [Open Blooket]({blooket})")
+
+            with c2:
+                # Provide the URL in a text input so teacher can easily select+copy
+                input_key = f"form_link_input_{idx}"
+                st.text_input("Form link (copy):", value=form_url, key=input_key, help="Select and copy (Ctrl+C) or long-press to copy on mobile.")
+
+                # Download button to save the link as a small text file
+                download_key = f"form_link_download_{idx}"
+                st.download_button(
+                    label="Download link (.txt)",
+                    data=form_url,
+                    file_name=f"{topic.replace(' ', '_')}_form_link.txt",
+                    mime="text/plain",
+                    key=download_key
+                )
+
+# ---------------- Chapters & Subtopics ----------------
+# Ensure branch is set before checking its value
 if subject == "Mathematics" and branch == "Algebra":
     chapter = st.selectbox("Select Chapter", [
         "Linear Equations in Two Variables",
@@ -197,7 +242,7 @@ if subject == "Mathematics" and branch == "Algebra":
 
     show_subtopics(subtopics)
 
-# --- Geometry Branch ---
+# ---------------- Geometry branch ----------------
 elif subject == "Mathematics" and branch == "Geometry":
     chapter = st.selectbox("Select Chapter", [
         "Similarity",
@@ -225,7 +270,7 @@ elif subject == "Mathematics" and branch == "Geometry":
                 "Form": "https://example.com/form-bpt",
                 "Kahoot": "https://example.com/kahoot-bpt",
                 "Blooket": "https://example.com/blooket-bpt"
-            },
+            }
             "Converse of BPT": {
                 "Form": "https://example.com/form-bpt-converse",
                 "Kahoot": "https://example.com/kahoot-bpt-converse",
@@ -367,4 +412,5 @@ else:
         st.info("Pick a branch above to see chapters.")
     else:
         st.info("Content for the selected subject is coming soon.")
+
 
