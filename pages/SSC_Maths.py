@@ -10,38 +10,30 @@ st.set_page_config(
 # ---------------- Sidebar ----------------
 st.sidebar.title("🔧 Select Parameters")
 board = st.sidebar.selectbox("Select Board", ["SSC", "ICSE"], index=0)
-# ensure subject is always defined
 subject = st.sidebar.selectbox("Select Subject", ["Mathematics", "Science", "English", "Social Studies"], index=0)
 
-# push feedback link to bottom (keeps using markdown only)
+# push feedback link to bottom
 st.sidebar.markdown("\n" * 10)
 st.sidebar.markdown("[📩 Feedback Form](https://example.com/feedback-form)")
 
 # ---------------- Header (Home button + Title) ----------------
-# balanced columns so Home button has enough width
 col_home, col_title = st.columns([2, 18])
 with col_home:
     if st.button("🏠 Home", key="home_top_left"):
-        # try switching to the Home page — catch and show helpful error if name mismatch
         try:
-            # Replace "Home.py" with the exact page name if your main file differs.
             st.switch_page("Home.py")
-        except Exception as e:
-            st.error(
-                "Unable to switch to Home. Ensure your main page filename is exactly 'Home.py' "
-                "or change the argument to st.switch_page(...) to match your file."
-            )
+        except Exception:
+            st.error("Unable to switch to Home. Ensure your main page filename is exactly 'Home.py' or change the argument to st.switch_page(...).")
 
 with col_title:
     st.markdown("## 📘 SSC Mathematics")
     st.caption("Use the branch selector below to choose Algebra or Geometry. Chapters for the chosen branch will appear below.")
 
-st.write("")  # small spacer
+st.write("")
 
 # ---------------- Branch selector (beneath title) ----------------
 branch = None
 if subject == "Mathematics":
-    # selectbox always returns a value so branch is defined
     branch = st.selectbox("Select Branch", ["Algebra", "Geometry"], key="branch_under_title")
 else:
     st.info("Select 'Mathematics' in the sidebar to enable branch selection.")
@@ -60,20 +52,15 @@ def show_subtopics(subtopics):
             kahoot = links.get("Kahoot", "#")
             blooket = links.get("Blooket", "#")
 
-            # three columns: links | copy area
             c1, c2 = st.columns([2, 3])
             with c1:
-                # Use markdown links (pure Streamlit)
                 st.markdown(f"- [Open Form]({form_url})")
                 st.markdown(f"- [Open Kahoot]({kahoot})")
                 st.markdown(f"- [Open Blooket]({blooket})")
 
             with c2:
-                # Provide the URL in a text input so teacher can easily select+copy
                 input_key = f"form_link_input_{idx}"
                 st.text_input("Form link (copy):", value=form_url, key=input_key, help="Select and copy (Ctrl+C) or long-press to copy on mobile.")
-
-                # Download button to save the link as a small text file
                 download_key = f"form_link_download_{idx}"
                 st.download_button(
                     label="Download link (.txt)",
@@ -412,5 +399,6 @@ else:
         st.info("Pick a branch above to see chapters.")
     else:
         st.info("Content for the selected subject is coming soon.")
+
 
 
