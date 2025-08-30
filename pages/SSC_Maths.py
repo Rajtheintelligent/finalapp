@@ -1,46 +1,31 @@
 import streamlit as st
 
-# --- Page Config ---
-st.set_page_config(
-    page_title="SSC Mathematics",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# --- Header: Home button + Title (use balanced column widths) ---
+# Give enough horizontal room to avoid wrapping the Home button text.
+col_home, col_title, col_spacer = st.columns([2, 14, 1])
 
-# --- Sidebar (keeps board/subject selection) ---
-st.sidebar.title("🔧 Select Parameters")
-board = st.sidebar.selectbox("Select Board", ["SSC", "ICSE"])
-subject = st.sidebar.selectbox("Select Subject", ["Mathematics", "Science", "English", "Social Studies"])
-
-# Spacer to push feedback button to bottom (keeps link_button usage)
-st.sidebar.markdown("<br><br><br><br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
-st.sidebar.link_button("📩 Feedback Form", "https://example.com/feedback-form")
-
-# --- Main Page ---
-# Top row with Home button on the left
-col_home, col_title = st.columns([1, 20])
 with col_home:
-    if st.button("Home", key="home_top_left"):
+    # Use a concise label with emoji so it remains compact
+    if st.button("🏠 Home", key="home_top_left"):
         try:
-            # Navigate to the main Home page - ensure the exact filename matches your main file
-            st.switch_page("Home.py")
-        except Exception as e:
-            # If navigation fails, show a helpful error (filename mismatch or missing file)
-            st.error("Unable to switch to Home page. Make sure `Home.py` exists in the app root and pass the exact filename to st.switch_page().")
+            st.switch_page("Home.py")   # make sure filename matches exactly
+        except Exception:
+            st.error("Cannot switch to Home. Ensure `Home.py` exists in app root.")
 
 with col_title:
-    st.title("📘 SSC Mathematics")
+    # Slightly smaller than st.title but still prominent and looks neat
+    st.markdown("## 📘  SSC Mathematics")
+    st.caption("Use the branch selector below to choose Algebra or Geometry. Chapters for the chosen branch will appear below.")
 
-st.markdown("""
-Use the branch selector below to choose Algebra or Geometry. Chapters for the chosen branch will appear below.
-""")
-
-# --- Branch dropdown beneath the title (local control) ---
+# --- Branch selector directly beneath the title ---
+# Keep the selectbox you asked for (compact and familiar)
 branch = None
-if subject == "Mathematics":
-    branch = st.selectbox("Select Branch", ["Algebra", "Geometry"], key="branch_under_title")
+if st.session_state.get("subject", "Mathematics") == "Mathematics":
+    # Use a single full-width row for the dropdown so it doesn't squeeze
+    branch_col = st.columns([1])[0]
+    branch = branch_col.selectbox("Select Branch", ["Algebra", "Geometry"], key="branch_under_title")
 else:
-    st.info("Select 'Mathematics' in the sidebar to choose a branch and view chapters.")
+    st.info("Select 'Mathematics' in the sidebar to enable branch selection.")
 
 # --- Helper: display subtopics (keeps your existing UI pattern) ---
 def show_subtopics(subtopics):
@@ -382,3 +367,4 @@ else:
         st.info("Pick a branch above to see chapters.")
     else:
         st.info("Content for the selected subject is coming soon.")
+
