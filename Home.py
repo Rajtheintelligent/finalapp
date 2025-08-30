@@ -52,8 +52,6 @@ with st.expander("SSC", expanded=True):
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("Mathematics", key="btn_ssc_math"):
-            # navigate to the multipage app page named "SSC_Maths"
-            st.experimental_set_query_params(page="SSC_Maths")
             st.query_params["page"] = "SSC_Maths"
             st.rerun()
     with col2:
@@ -76,5 +74,6 @@ with st.expander("SSC", expanded=True):
         if st.button("Teacher Dashboard", key="btn_teacher_dashboard"):
             st.query_params["page"] = "Teacher_Dashboard"
             st.rerun()
+
 
 
