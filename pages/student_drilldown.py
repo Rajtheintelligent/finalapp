@@ -356,6 +356,7 @@ if go:
                             # show obvious columns and neat formatting
                             detail_df = detail_df.rename(columns={
                                 "Question_No": "Q.No",
+                                "Question": "Question",
                                 "Student_Answer": "Student Answer",
                                 "Correct_Answer": "Correct Answer",
                                 "Is_Correct": "Is Correct"
