@@ -306,7 +306,9 @@ if go:
                     ax1.legend(loc="upper left", fontsize=9)
                     ax2.legend(loc="upper right", fontsize=9)
                     plt.tight_layout()
-                    st.pyplot(fig, use_container_width=True)
+                                    
+                    with st.container():
+                        st.pyplot(fig)
 
                     # ---------------------------
                     # Tabbed view: Summary table & Per-question detail
