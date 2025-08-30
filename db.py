@@ -136,16 +136,8 @@ def save_bulk_responses(rows):
 # =============================================================
 
 def get_batch_performance(batch_code: str, subject: str, subtopic: str = None) -> pd.DataFrame:
-    """
-    Return a DataFrame of per-student performance (Correct/Incorrect counts)
-    for a given batch + subject, and optionally a specific subtopic.
-
-    Columns:
-      Student_Name, Student_Email, Tuition_Code, Subject, Subtopic, Correct, Incorrect
-    """
     db = SessionLocal()
     try:
-        # Build base query
         q = (
             db.query(
                 Student.name.label("Student_Name"),
@@ -156,58 +148,28 @@ def get_batch_performance(batch_code: str, subject: str, subtopic: str = None) -
                 Response.is_correct.label("is_correct"),
             )
             .join(Response, Student.id == Response.student_id)
-            .join(
-                Question,
-                (Question.subject == Response.subject) &
-                (Question.subtopic == Response.subtopic) &
-                (Question.question_no == Response.question_no)
-            )
             .filter(
                 func.lower(Student.class_code) == func.lower(batch_code.strip()),
                 func.lower(Response.subject) == func.lower(subject.strip())
             )
         )
-
-        # Apply subtopic filter if given
         if subtopic:
             q = q.filter(func.lower(Response.subtopic) == func.lower(subtopic.strip()))
 
-        # Execute
         rows = q.all()
-
-        # Debug logging
-        print("DEBUG batch_code:", batch_code)
-        print("DEBUG subject:", subject)
-        print("DEBUG subtopic:", subtopic)
-        print("DEBUG rows fetched:", len(rows))
-        if rows:
-            print("Sample row:", rows[0])
-
-        # If no rows, return empty DataFrame with expected columns
         if not rows:
             return pd.DataFrame(columns=[
-                "Student_Name", "Student_Email", "Tuition_Code", "Subject",
-                "Subtopic", "Correct", "Incorrect"
+                "Student_Name","Student_Email","Tuition_Code","Subject","Subtopic","Correct","Incorrect"
             ])
 
-        # Convert to DataFrame
         df = pd.DataFrame(rows, columns=[
-            "Student_Name", "Student_Email", "Tuition_Code",
-            "Subject", "Subtopic", "is_correct"
+            "Student_Name","Student_Email","Tuition_Code","Subject","Subtopic","is_correct"
         ])
-
-        # Aggregate correct/incorrect counts
         perf = (
-            df.groupby(
-                ["Student_Name", "Student_Email", "Tuition_Code", "Subject", "Subtopic"],
-                as_index=False
-            )
-            .agg(
-                Correct=("is_correct", lambda x: int(x.sum())),
-                Incorrect=("is_correct", lambda x: int((~x).sum()))
-            )
+            df.groupby(["Student_Name","Student_Email","Tuition_Code","Subject","Subtopic"], as_index=False)
+              .agg(Correct=("is_correct", lambda x: int(x.sum())),
+                   Incorrect=("is_correct", lambda x: int((~x).sum())))
         )
-
         return perf
     finally:
         db.close()
@@ -222,8 +184,8 @@ def get_student_summary(batch_code: str, subject: str, student_email: str) -> pd
     perf = get_batch_performance(batch_code, subject, subtopic=None)
     if perf.empty:
         return pd.DataFrame(columns=["Subtopic","Correct","Incorrect","Total"])
+    sdf = perf[perf["Student_Email"].str.lower().str.strip() == student_email.lower().strip()]
 
-    sdf = perf[perf["Student_Email"] == student_email]
     if sdf.empty:
         return pd.DataFrame(columns=["Subtopic","Correct","Incorrect","Total"])
 
@@ -236,11 +198,6 @@ def get_student_summary(batch_code: str, subject: str, student_email: str) -> pd
 
 
 def get_student_responses(student_email: str, subject: str, subtopic: str) -> pd.DataFrame:
-    """
-    Return all question-level responses for a specific student in a subject & subtopic.
-
-    Columns: Question_No, Student_Answer, Correct_Answer, Is_Correct
-    """
     db = SessionLocal()
     try:
         q = (
@@ -252,9 +209,9 @@ def get_student_responses(student_email: str, subject: str, subtopic: str) -> pd
             )
             .join(Student, Student.id == Response.student_id)
             .filter(
-                Student.email == student_email,
-                Response.subject.ilike(subject),
-                Response.subtopic == subtopic,
+                func.lower(Student.email) == func.lower(student_email.strip()),
+                func.lower(Response.subject) == func.lower(subject.strip()),
+                func.lower(Response.subtopic) == func.lower(subtopic.strip()),
             )
         )
         rows = q.all()
