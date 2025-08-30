@@ -234,7 +234,7 @@ subtopic = normalize_subtopic_param(subtopic)
 # =============================
 try:
     from streamlit_autorefresh import st_autorefresh
-    st_autorefresh(interval=5000, key="data_refresh")
+    st_autorefresh(interval=30000, key="data_refresh")
 except Exception:
     import time
     if "last_refresh" not in st.session_state:
@@ -308,12 +308,36 @@ def plot_horizontal_stacked_by_category(df: pd.DataFrame, cat_col: str, title: s
     d = d.sort_values(by=["Accuracy", "Total"], ascending=[True, False], na_position="last")
 
     n = max(1, len(d))
-    fig_height = max(3.5, n * 0.65)
-    fig, ax = plt.subplots(figsize=(10, fig_height))
+
+    # desired physical sizes
+    bar_cm = 1.0     # each bar thickness = 1 cm
+    gap_cm = 0.5     # gap between bars = 0.5 cm
+    margin_cm = 2.0  # extra top+bottom space
+
+    # total figure height in inches
+    total_needed_cm = n * (bar_cm + gap_cm) + margin_cm
+    fig_height = total_needed_cm / 2.54
+    fig_width = 10   # keep width as before
+
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 
     y = np.arange(len(d))
-    ax.barh(y, d["Correct"], label="Correct")
-    ax.barh(y, d["Incorrect"], left=d["Correct"], label="Incorrect")
+
+    # --- Compute bar_height in data units for exactly 1 cm physical size ---
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    bbox = ax.get_window_extent(renderer=renderer)
+    axes_height_px = bbox.height
+    dpi = fig.dpi
+
+    desired_bar_px = (bar_cm / 2.54) * dpi
+    data_span = max(1, len(d))  # one unit per row in categorical axis
+    px_per_data = axes_height_px / data_span
+    bar_height = desired_bar_px / px_per_data
+
+    # Plot stacked bars with fixed height
+    ax.barh(y, d["Correct"], height=bar_height, label="Correct")
+    ax.barh(y, d["Incorrect"], left=d["Correct"], height=bar_height, label="Incorrect")
 
     for i, (c, ic, tot) in enumerate(zip(d["Correct"], d["Incorrect"], d["Total"])):
         if c > 0: ax.text(c/2, i, str(int(c)), va="center", ha="center", color="white", fontsize=9, weight="bold")
@@ -330,7 +354,6 @@ def plot_horizontal_stacked_by_category(df: pd.DataFrame, cat_col: str, title: s
     ax.legend(loc="lower right", fontsize=9)
     plt.tight_layout()
     return fig
-
 
 def plot_vertical_stacked_by_category(df: pd.DataFrame, cat_col: str, title: str):
     d = df.copy()
