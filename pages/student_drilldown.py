@@ -220,21 +220,51 @@ if go:
                     class_accs = merged["Class_AccuracyPct"].to_numpy()
                        
                     x = np.arange(len(labels))
-
+                              
                     # 3) Sizing/colors
+                    # 3) Sizing/colors — make physical bar width 1cm and gap 0.5cm
                     n = max(1, len(labels))
-                    # Wider and taller than before; width grows a bit with number of bars
-                    fig_width = max(12, 0.45 * n + 8)
-                    fig_height = 9  # taller chart as requested
-
+                       
+                    # desired physical sizes (cm)
+                    bar_cm = 1.0
+                    gap_cm = 0.5
+                    center_cm = bar_cm + gap_cm  # center-to-center spacing in cm
+                              
+                    # compute figure width (in inches) so each center spacing ~ center_cm
+                    min_fig_width_in = 12  # keep your original minimum
+                    side_margin_cm = 2.0   # small horizontal margin (total, adjust if you like)
+                    total_needed_cm = center_cm * n + side_margin_cm
+                    fig_width = max(min_fig_width_in, total_needed_cm / 2.54)  # convert cm -> inches
+                    fig_height = 9  # unchanged
+                                  
                     fig, ax1 = plt.subplots(figsize=(fig_width, fig_height))
+                    # compute bar width in data coordinates so rendered width ≈ bar_cm
+                    fig.canvas.draw()  # ensure renderer/layout is ready
+                    renderer = fig.canvas.get_renderer()
+                    bbox = ax1.get_window_extent(renderer=renderer)  # bbox in pixels
+                    axes_width_px = bbox.width
+                    dpi = fig.dpi
+                             
+                    # desired sizes in pixels
+                    desired_bar_px = (bar_cm / 2.54) * dpi
+                    desired_center_px = (center_cm / 2.54) * dpi
+                                
+                    # when x = np.arange(n), data span = (n-1); handle n==1 safely
+                    data_span = max(1, (n - 1))
+                    axes_px_per_data = axes_width_px / data_span
+                              
+                    # bar width in data units
+                    bar_width = desired_bar_px / axes_px_per_data
+                          
+                    # (optional safety clamp so width doesn't exceed 1 data unit badly)
+                    bar_width = min(bar_width, 0.95 * (desired_center_px / axes_px_per_data))
 
                     correct_color = "#2E7D32"   # green
                     incorrect_color = "#C62828" # red
 
                     # 4) Stacked vertical bars
-                    ax1.bar(x, corrects, label="Correct", color=correct_color, edgecolor="none")
-                    ax1.bar(x, incorrects, bottom=corrects, label="Incorrect", color=incorrect_color, edgecolor="none")
+                    ax1.bar(x, corrects, width=bar_width, label="Correct", color=correct_color, edgecolor="none")
+                    ax1.bar(x, incorrects, width=bar_width, bottom=corrects, label="Incorrect", color=incorrect_color, edgecolor="none")
 
                     # 5) Count labels inside stacks
                     for i, (c, ic, tot) in enumerate(zip(corrects, incorrects, totals)):
