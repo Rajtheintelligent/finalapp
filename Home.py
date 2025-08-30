@@ -52,28 +52,22 @@ with st.expander("SSC", expanded=True):
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("Mathematics", key="btn_ssc_math"):
-            st.query_params["page"] = "SSC_Maths"
-            st.rerun()
+            st.switch_page("pages/SSC_Maths.py")
     with col2:
         if st.button("Science", key="btn_ssc_science"):
-            st.query_params["page"] = "SSC_Science"
-            st.rerun()
+            st.switch_page("pages/SSC_Science.py")
     with col3:
         if st.button("English", key="btn_ssc_english"):
-            st.query_params["page"] = "SSC_English"
-            st.rerun()
-
+            st.switch_page("pages/SSC_English.py")
+            
     st.markdown("---")
-    # two additional buttons underneath
     c1, c2 = st.columns(2)
     with c1:
         if st.button("Student Drilldown", key="btn_student_drilldown"):
-            st.query_params["page"] = "Student_Drilldown"
-            st.rerun()
+            st.switch_page("pages/Student_Drilldown.py")
     with c2:
         if st.button("Teacher Dashboard", key="btn_teacher_dashboard"):
-            st.query_params["page"] = "Teacher_Dashboard"
-            st.rerun()
+            st.switch_page("pages/Teacher_Dashboard.py")
 
 
 
