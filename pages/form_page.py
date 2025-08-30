@@ -531,7 +531,7 @@ if not ss["main_submitted"]:
             opts = [o for o in opts if o]
             disp_opts = stable_shuffle(opts, seed_base + f"::OPT::{qid}")
 
-            st.markdown(f"**{qid}**<br>{qtext}", unsafe_allow_html=True)
+            st.markdown(f"**{qid}**<br>{qtext}", unsafe_allow_html=True)  #st.markdown(qtext)
             if img:
                 img_bytes = fetch_image_bytes(img)
                 if img_bytes:
