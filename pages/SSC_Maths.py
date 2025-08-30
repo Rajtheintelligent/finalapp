@@ -7,40 +7,54 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Sidebar ---
+# --- Sidebar (keeps board/subject selection) ---
 st.sidebar.title("🔧 Select Parameters")
 board = st.sidebar.selectbox("Select Board", ["SSC", "ICSE"])
 subject = st.sidebar.selectbox("Select Subject", ["Mathematics", "Science", "English", "Social Studies"])
 
-branch = None
-if subject == "Mathematics":
-    branch = st.sidebar.selectbox("Select Branch", ["Algebra", "Geometry"])
-
-# Spacer to push feedback button to bottom
+# Spacer to push feedback button to bottom (keeps link_button usage)
 st.sidebar.markdown("<br><br><br><br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
-
-# --- Feedback Button ---
 st.sidebar.link_button("📩 Feedback Form", "https://example.com/feedback-form")
 
 # --- Main Page ---
-st.title("📘 SSC Mathematics")
+# Top row with Home button on the left
+col_home, col_title = st.columns([1, 20])
+with col_home:
+    if st.button("Home", key="home_top_left"):
+        try:
+            # Navigate to the main Home page - ensure the exact filename matches your main file
+            st.switch_page("Home.py")
+        except Exception as e:
+            # If navigation fails, show a helpful error (filename mismatch or missing file)
+            st.error("Unable to switch to Home page. Make sure `Home.py` exists in the app root and pass the exact filename to st.switch_page().")
+
+with col_title:
+    st.title("📘 SSC Mathematics")
+
 st.markdown("""
-Use the sidebar to choose the board, subject, and branch. Assessment content will appear below based on your selection.
+Use the branch selector below to choose Algebra or Geometry. Chapters for the chosen branch will appear below.
 """)
 
-# --- Function to Display Subtopics ---
+# --- Branch dropdown beneath the title (local control) ---
+branch = None
+if subject == "Mathematics":
+    branch = st.selectbox("Select Branch", ["Algebra", "Geometry"], key="branch_under_title")
+else:
+    st.info("Select 'Mathematics' in the sidebar to choose a branch and view chapters.")
+
+# --- Helper: display subtopics (keeps your existing UI pattern) ---
 def show_subtopics(subtopics):
     for topic, links in subtopics.items():
         with st.expander(f"🔹 {topic}"):
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.link_button("Open Form", links["Form"])
+                st.link_button("Open Form", links.get("Form", "#"))
             with col2:
-                st.link_button("Open Kahoot", links["Kahoot"])
+                st.link_button("Open Kahoot", links.get("Kahoot", "#"))
             with col3:
-                st.link_button("Open Blooket", links["Blooket"])
+                st.link_button("Open Blooket", links.get("Blooket", "#"))
 
-# --- Algebra Branch ---
+# --- If Mathematics + branch selected, show chapters and subtopics ---
 if subject == "Mathematics" and branch == "Algebra":
     chapter = st.selectbox("Select Chapter", [
         "Linear Equations in Two Variables",
@@ -49,7 +63,7 @@ if subject == "Mathematics" and branch == "Algebra":
         "Probability",
         "Statistics",
         "Financial Planning"
-    ])
+    ], key="algebra_chapter")
 
     if chapter == "Linear Equations in Two Variables":
         st.subheader("📂 Subtopics in Linear Equations in Two Variables")
@@ -70,7 +84,6 @@ if subject == "Mathematics" and branch == "Algebra":
                 "Blooket": "https://example.com/blooket-wordproblems"
             }
         }
-
     elif chapter == "Quadratic Equation":
         st.subheader("📂 Subtopics in Quadratic Equations")
         subtopics = {
@@ -105,7 +118,6 @@ if subject == "Mathematics" and branch == "Algebra":
                 "Blooket": "https://example.com/blooket-wordquad"
             }
         }
-
     elif chapter == "Arithmetic Progression":
         st.subheader("📂 Subtopics in Arithmetic Progression")
         subtopics = {
@@ -130,7 +142,6 @@ if subject == "Mathematics" and branch == "Algebra":
                 "Blooket": "https://example.com/blooket-ap-word"
             }
         }
-
     elif chapter == "Probability":
         st.subheader("📂 Subtopics in Probability")
         subtopics = {
@@ -150,7 +161,6 @@ if subject == "Mathematics" and branch == "Algebra":
                 "Blooket": "https://example.com/blooket-prob-games"
             }
         }
-
     elif chapter == "Statistics":
         st.subheader("📂 Subtopics in Statistics")
         subtopics = {
@@ -175,7 +185,6 @@ if subject == "Mathematics" and branch == "Algebra":
                 "Blooket": "https://example.com/blooket-histogram"
             }
         }
-
     elif chapter == "Financial Planning":
         st.subheader("📂 Subtopics in Financial Planning")
         subtopics = {
@@ -212,15 +221,15 @@ elif subject == "Mathematics" and branch == "Geometry":
         "Constructions",
         "Co-ordinate Geometry",
         "Mensuration (Surface Area and Volume)"
-    ])
+    ], key="geometry_chapter")
 
     if chapter == "Similarity":
         st.subheader("📂 Subtopics in Similarity")
         subtopics = {
             "Ratios of areas of two triangles": {
-                "Form": "/form_page?subject=maths&subtopic_id=Ratio",
-                "Kahoot": "https://example.com/kahoot-ratios-of-areas-of-two-triangles",
-                "Blooket": "https://example.com/blooket-ratios-of-areas-of-two-triangles"
+                "Form": "https://example.com/form-ratio",
+                "Kahoot": "https://example.com/kahoot-ratio",
+                "Blooket": "https://example.com/blooket-ratio"
             },
             "Criteria for Similarity of Triangles": {
                 "Form": "https://example.com/form-similarity-criteria",
@@ -248,7 +257,6 @@ elif subject == "Mathematics" and branch == "Geometry":
                 "Blooket": "https://example.com/blooket-similarity-pythagoras"
             }
         }
-
     elif chapter == "Pythagoras Theorem":
         st.subheader("📂 Subtopics in Pythagoras Theorem")
         subtopics = {
@@ -268,7 +276,6 @@ elif subject == "Mathematics" and branch == "Geometry":
                 "Blooket": "https://example.com/blooket-pythagoras-apps"
             }
         }
-
     elif chapter == "Circles":
         st.subheader("📂 Subtopics in Circles")
         subtopics = {
@@ -298,7 +305,6 @@ elif subject == "Mathematics" and branch == "Geometry":
                 "Blooket": "https://example.com/blooket-circle-proof"
             }
         }
-
     elif chapter == "Constructions":
         st.subheader("📂 Subtopics in Constructions")
         subtopics = {
@@ -323,7 +329,6 @@ elif subject == "Mathematics" and branch == "Geometry":
                 "Blooket": "https://example.com/blooket-construct-given"
             }
         }
-
     elif chapter == "Co-ordinate Geometry":
         st.subheader("📂 Subtopics in Co-ordinate Geometry")
         subtopics = {
@@ -348,7 +353,6 @@ elif subject == "Mathematics" and branch == "Geometry":
                 "Blooket": "https://example.com/blooket-geometry-area"
             }
         }
-
     elif chapter == "Mensuration (Surface Area and Volume)":
         st.subheader("📂 Subtopics in Mensuration")
         subtopics = {
@@ -373,4 +377,8 @@ elif subject == "Mathematics" and branch == "Geometry":
 
 # --- Placeholder for other subjects ---
 else:
-    st.info("Content for the selected subject is coming soon.")
+    # If not mathematics or branch not chosen, show a friendly placeholder
+    if subject == "Mathematics":
+        st.info("Pick a branch above to see chapters.")
+    else:
+        st.info("Content for the selected subject is coming soon.")
