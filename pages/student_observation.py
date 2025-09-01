@@ -270,8 +270,8 @@ for p in PARAMETERS:
                 label_visibility="collapsed"
     )
     st.write(f"Selected: {val}")
-
-        st.markdown(f"<div class=\"scale-legend\">1 = Very weak · 6 = Excellent</div>", unsafe_allow_html=True)
+                         
+        st.caption("1 = Very weak · 6 = Excellent")
     with cols[2]:
         st.write(p['right'])
     st.markdown("</div>", unsafe_allow_html=True)
