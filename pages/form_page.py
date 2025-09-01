@@ -44,6 +44,25 @@ from email.mime.application import MIMEApplication
 
 st.set_page_config(page_title="Quiz Form", layout="centered")
 ss = st.session_state
+# --- Hide Streamlit sidebar toggle chevrons (unofficial, CSS) ---
+st.markdown(
+    """
+    <style>
+      /* Try a few selectors to catch different Streamlit versions */
+      button[aria-label="Toggle sidebar"] { display: none !important; }
+      button[aria-label="Collapse sidebar"] { display: none !important; }
+      button[aria-label="Expand sidebar"] { display: none !important; }
+
+      /* fallback: hide any small top-left chevrons that look like >> */
+      button[title="Expand"] { display: none !important; }
+      button[title="Collapse"] { display: none !important; }
+
+      /* keep this narrow so we don't accidentally hide other buttons */
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 # ---------- Session state defaults ----------
 if "student_info" not in ss:
