@@ -93,28 +93,32 @@ else:
     get_observations_history_fn = get_observations_history
 
 # ---------------------------
-# CSS for boxed sliders and buttons
+# Slider rendering helper (Streamlit only, no CSS)
 # ---------------------------
-st.markdown(
-    """
-    "<style>
-"
-    ".slider-box{border:1px solid #e6e6e6;border-radius:10px;padding:12px;margin-bottom:12px;background:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
-"
-    ".scale-row{display:flex;justify-content:space-between;padding:0 6px;font-size:0.9rem;color:#444;}
-"
-    ".scale-legend{font-size:0.85rem;color:#666;margin-top:6px;}
-"
-    ".graph-btn{display:inline-block;padding:8px 16px;margin-right:6px;border-radius:8px;border:1px solid #cfcfcf;background:#f6f6f6;cursor:pointer;}
-"
-    ".graph-btn.active{background:#17549a;color:white;border-color:#17549a;}
-"
-    "@media (max-width:600px){ .slider-box{padding:10px} .scale-row{font-size:0.8rem} }
-"
-    "</style>"
-    """,
-    unsafe_allow_html=True
-)
+def render_slider(param, existing_obs=None):
+    with st.container():  # gives a "boxed" feel in Streamlit
+        st.markdown(f"**{param['title']}**")
+        cols = st.columns([1, 6, 1])
+        with cols[0]:
+            st.write(param['left'])
+        with cols[1]:
+            default_val = 3
+            if existing_obs is not None:
+                if isinstance(existing_obs, dict):
+                    default_val = int(existing_obs.get(param['key'], 3) or 3)
+                else:
+                    default_val = int(getattr(existing_obs, param['key'], 3) or 3)
+            val = st.slider(
+                label="",
+                min_value=1,
+                max_value=6,
+                value=default_val,
+                step=1,
+                label_visibility="collapsed"
+            )
+        with cols[2]:
+            st.write(param['right'])
+    return val
 
 # ---------------------------
 # Register loader (from st.secrets)
@@ -237,8 +241,9 @@ st.caption("Scale: 1 (very weak) — 6 (excellent)")
 
 slider_values = {}
 for p in PARAMETERS:
-    # boxed area
-    st.markdown(f"<div class=\"slider-box\">", unsafe_allow_html=True)
+    slider_values[p['key']] = render_slider(p, existing_obs)
+    ...
+    st.markdown("</div>", unsafe_allow_html=True)
     st.markdown(f"**{p['title']}**")
     cols = st.columns([1, 6, 1])
     with cols[0]:
@@ -253,13 +258,19 @@ for p in PARAMETERS:
         # slider
         slider_values[p['key']] = st.slider(label="", min_value=1, max_value=6, value=int(default_val), key=p['key'])
         # visual ticks row
-        st.markdown(
-            "<div class=\"scale-row\">
-" +
-            "<div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div>
-" +
-            "</div>", unsafe_allow_html=True
-        )
+        with st.container():
+            st.markdown("**Cognitive Skills: Simple → Complex**")
+            val = st.slider(
+                "Rate the student",
+                min_value=1,
+                max_value=6,
+                value=3,
+                step=1,
+                help="1 = Very weak · 6 = Excellent",
+                label_visibility="collapsed"
+    )
+    st.write(f"Selected: {val}")
+
         st.markdown(f"<div class=\"scale-legend\">1 = Very weak · 6 = Excellent</div>", unsafe_allow_html=True)
     with cols[2]:
         st.write(p['right'])
