@@ -23,8 +23,30 @@ st.sidebar.markdown("<br><br><br><br><br><br><br><br><br><br><br>", unsafe_allow
 st.sidebar.link_button("📩 Feedback Form", "https://example.com/feedback-form")
 
 # --- Main Page ---
-st.title("📘 SSC Maharashtra Class 10 Science Syllabus")
-st.markdown("Use the sidebar to select the board, subject, and branch to view relevant topics.")
+# Top row with Home button on the left
+col_home, col_title = st.columns([1, 20])
+with col_home:
+    if st.button("Home", key="home_top_left"):
+        try:
+            # Navigate to the main Home page - ensure the exact filename matches your main file
+            st.switch_page("Home.py")
+        except Exception as e:
+            # If navigation fails, show a helpful error (filename mismatch or missing file)
+            st.error("Unable to switch to Home page. Make sure `Home.py` exists in the app root and pass the exact filename to st.switch_page().")
+
+with col_title:
+    st.title("📘 SSC Science")
+
+st.markdown("""
+Use the branch selector below to choose Algebra or Geometry. Chapters for the chosen branch will appear below.
+""")
+
+# --- Branch dropdown beneath the title (local control) ---
+branch = None
+if subject == "Science":
+    branch = st.selectbox("Select Branch", ["Science Part 1: Physics & Chemistry", "Science Part 2: Biology & Environmental Science"], key="branch_under_title")
+else:
+    st.info("Select 'Science' in the sidebar to choose a branch and view chapters.")
 
 def show_subtopics(subtopics):
     for topic, links in subtopics.items():
@@ -184,3 +206,4 @@ if board == "SSC" and subject == "Science":
 
 else:
     st.info("Please select 'Science' as the subject under SSC Board to view content.")
+
