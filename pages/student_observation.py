@@ -96,6 +96,7 @@ else:
 # CSS for boxed sliders and buttons
 # ---------------------------
 st.markdown(
+    """
     "<style>
 "
     ".slider-box{border:1px solid #e6e6e6;border-radius:10px;padding:12px;margin-bottom:12px;background:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
@@ -110,7 +111,9 @@ st.markdown(
 "
     "@media (max-width:600px){ .slider-box{padding:10px} .scale-row{font-size:0.8rem} }
 "
-    "</style>", unsafe_allow_html=True
+    "</style>"
+    """,
+    unsafe_allow_html=True
 )
 
 # ---------------------------
