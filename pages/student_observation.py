@@ -6,7 +6,6 @@ from io import BytesIO
 from datetime import date, datetime
 import re
 import os
-from matplotlib.backends.backend_pdf import PdfPages
 
 # ---------------------------
 # Page config
@@ -34,6 +33,7 @@ PARAMETERS = [
 USE_DB = False
 try:
     from db import save_observation, get_latest_observation, get_observations_history
+    # If import succeeds, assume DB-backed functions exist and will be used
     USE_DB = True
 except Exception:
     USE_DB = False
@@ -54,11 +54,13 @@ def fallback_get_latest_observation(class_code: str, email: str):
 
 
 def fallback_save_observation(class_code: str, email: str, obs_date: date, params: dict, teacher_email: str = None, notes: str = None):
+    # read existing or create
     if os.path.exists(LOCAL_RESPONSES_PATH):
         df = pd.read_csv(LOCAL_RESPONSES_PATH)
     else:
         df = pd.DataFrame(columns=["class_code","email","observation_date"] + [p["key"] for p in PARAMETERS] + ["teacher_email","notes","created_at"])
 
+    # remove previous entries for same class+email+date (we will append)
     mask = (df["class_code"].astype(str) == str(class_code)) & (df["email"].str.lower() == str(email).lower()) & (df["observation_date"] == str(obs_date))
     if mask.any():
         df = df[~mask]
@@ -91,34 +93,6 @@ else:
     save_observation_fn = save_observation
     get_latest_observation_fn = get_latest_observation
     get_observations_history_fn = get_observations_history
-
-# ---------------------------
-# Slider rendering helper (Streamlit only, no CSS)
-# ---------------------------
-def render_slider(param, existing_obs=None):
-    with st.container():  # gives a "boxed" feel in Streamlit
-        st.markdown(f"**{param['title']}**")
-        cols = st.columns([1, 6, 1])
-        with cols[0]:
-            st.write(param['left'])
-        with cols[1]:
-            default_val = 3
-            if existing_obs is not None:
-                if isinstance(existing_obs, dict):
-                    default_val = int(existing_obs.get(param['key'], 3) or 3)
-                else:
-                    default_val = int(getattr(existing_obs, param['key'], 3) or 3)
-            val = st.slider(
-                label="",
-                min_value=1,
-                max_value=6,
-                value=default_val,
-                step=1,
-                label_visibility="collapsed"
-            )
-        with cols[2]:
-            st.write(param['right'])
-    return val
 
 # ---------------------------
 # Register loader (from st.secrets)
@@ -156,6 +130,7 @@ def load_register_df():
 home_col1, home_col2 = st.columns([1, 9])
 with home_col1:
     if st.button("🏠 Home"):
+        # If your app uses multipage navigation, replace the next line with your preferred navigation action
         try:
             st.experimental_set_query_params(page="home")
         except Exception:
@@ -180,15 +155,16 @@ with col2:
 with col3:
     obs_date = st.date_input("Observation Date", value=date.today())
 
-# Optional: teacher email and notes (these notes will be included in the PDF/PNG downloads)
+# Optional: teacher email and notes
 teacher_col1, teacher_col2 = st.columns([3, 7])
 with teacher_col1:
     teacher_email = st.text_input("Your (teacher) email (optional)")
 with teacher_col2:
-    notes = st.text_area("Notes (these will be included in downloaded report)", height=100)
+    notes = st.text_area("Notes (optional)", height=80)
 
-# Verify student
+# Verify button
 verify = st.button("🔎 Verify student")
+
 register_df = load_register_df()
 verified = False
 if verify:
@@ -196,17 +172,22 @@ if verify:
         st.warning("Register sheet not loaded; please check st.secrets['google']['register_sheet_url'].")
     else:
         cols = {c.lower(): c for c in register_df.columns}
-        tuition_col = None
-        email_col = None
-        for k in register_df.columns:
-            lk = k.lower()
-            if lk in ("tuition_code", "class_code", "tuition", "batch", "batch_code"):
-                tuition_col = k
-            if "email" in lk and ("student" in lk or "parent" not in lk):
-                # prefer student email
-                email_col = k
+        tuition_col = cols.get("tuition_code") or cols.get("tuition_code") or None
+        email_col = cols.get("student_email") or cols.get("student_email") or cols.get("student_email") or None
+        # be lenient: try variations
+        if not tuition_col:
+            for k in register_df.columns:
+                if k.lower().strip() in ("tuition_code", "class_code", "batch", "batch_code"):
+                    tuition_col = k
+                    break
+        if not email_col:
+            for k in register_df.columns:
+                if "email" in k.lower() and ("student" in k.lower() or True):
+                    email_col = k
+                    break
+
         if not tuition_col or not email_col:
-            st.warning("Register sheet doesn't contain expected Tuition_Code / Student_Email columns. Found: " + ", ".join(register_df.columns))
+            st.warning("Register sheet doesn't contain expected columns. Found: " + ", ".join(register_df.columns))
         else:
             matches = register_df[
                 (register_df[tuition_col].astype(str).str.strip() == str(class_code).strip()) &
@@ -214,14 +195,19 @@ if verify:
             ]
             if not matches.empty:
                 st.success("Student verified in register ✔️")
-                std_name = matches.iloc[0].get("Student_Name") if "Student_Name" in matches.columns else None
+                # show some helpful info if present
+                std_name = None
+                for key in ("Student_Name", "StudentName", "student_name", "studentname", "Student_Name "):
+                    if key in matches.columns:
+                        std_name = matches.iloc[0][key]
+                        break
                 if pd.notna(std_name):
                     st.write(f"**Student:** {std_name}")
                 verified = True
             else:
                 st.error("No match found for the provided Tuition_Code and Student_Email.")
 
-# Load existing observation
+# Load latest observation (DB or fallback)
 existing_obs = None
 if class_code and email:
     try:
@@ -230,20 +216,16 @@ if class_code and email:
         existing_obs = None
 
 if existing_obs is not None:
-    date_str = existing_obs.get('observation_date') if isinstance(existing_obs, dict) else getattr(existing_obs, 'observation_date', None)
-    st.info(f"Found previous observation on {date_str} — values loaded below. You can edit and Save to update.")
+    st.info(f"Found previous observation on {existing_obs.get('observation_date') if isinstance(existing_obs, dict) else getattr(existing_obs, 'observation_date', None)} — values loaded below. You can edit and Save to update.")
 
 st.write("---")
 
-# Render sliders inside boxes with clear 1-6 scale
+# Sliders
 st.subheader("Observation Sliders")
 st.caption("Scale: 1 (very weak) — 6 (excellent)")
 
 slider_values = {}
 for p in PARAMETERS:
-    slider_values[p['key']] = render_slider(p, existing_obs)
-    ...
-    st.markdown("</div>", unsafe_allow_html=True)
     st.markdown(f"**{p['title']}**")
     cols = st.columns([1, 6, 1])
     with cols[0]:
@@ -251,29 +233,15 @@ for p in PARAMETERS:
     with cols[1]:
         default_val = 3
         if existing_obs is not None:
+            # existing_obs may be a dict (fallback) or object (DB)
             if isinstance(existing_obs, dict):
                 default_val = int(existing_obs.get(p['key'], 3) if existing_obs.get(p['key'], 3) is not None else 3)
             else:
                 default_val = int(getattr(existing_obs, p['key'], 3) or 3)
-        # slider
         slider_values[p['key']] = st.slider(label="", min_value=1, max_value=6, value=int(default_val), key=p['key'])
-        # visual ticks row
-        with st.container():
-            st.markdown("**Cognitive Skills: Simple → Complex**")
-            val = st.slider(
-                "Rate the student",
-                min_value=1,
-                max_value=6,
-                value=3,
-                step=1,
-                help="1 = Very weak · 6 = Excellent",
-                label_visibility="collapsed"
-    )
-    st.write(f"Selected: {val}")
-    st.caption("1 = Very weak · 6 = Excellent")
     with cols[2]:
         st.write(p['right'])
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.write("")
 
 # Save button
 if st.button("💾 Save observation"):
@@ -285,6 +253,7 @@ if st.button("💾 Save observation"):
             success = save_observation_fn(class_code=class_code, email=email, obs_date=obs_date, params=row_params, teacher_email=teacher_email or None, notes=notes or None)
             if success:
                 st.success("Observation saved.")
+                # reload latest
                 existing_obs = get_latest_observation_fn(class_code, email)
             else:
                 st.warning("Save function did not return True. Check logs.")
@@ -294,122 +263,47 @@ if st.button("💾 Save observation"):
 st.write("---")
 
 # ---------------------------
-# Graph type selection using buttons (persisted in session_state)
+# Graph
 # ---------------------------
-if 'graph_type' not in st.session_state:
-    st.session_state['graph_type'] = 'combined'
+st.subheader("Progress Graph")
+view_choice = st.radio("Graph type", options=['Single combined line (all parameters)', 'Separate small plots (each parameter)'], horizontal=True)
 
-col_a, col_b = st.columns([1,1])
-with col_a:
-    if st.button("Combined view"):
-        st.session_state['graph_type'] = 'combined'
-with col_b:
-    if st.button("Separate tiles"):
-        st.session_state['graph_type'] = 'tiles'
-
-# Small CSS to visually indicate active button (Streamlit won't change button HTML; show a small text)
-st.markdown(f"**Selected graph:** {st.session_state['graph_type'].capitalize()}")
-
-# ---------------------------
-# Graph generation (more professional styling)
-# ---------------------------
 labels = [p['title'] for p in PARAMETERS]
 values = [slider_values[p['key']] for p in PARAMETERS]
 
-# Helper: create combined professional chart
-def create_combined_figure(labels, values):
-    fig, ax = plt.subplots(figsize=(10, 5))
+fig = plt.figure(figsize=(8, 4))
+ax = fig.add_subplot(111)
+if view_choice.startswith('Single'):
     x = np.arange(len(labels))
-    # line with markers
-    ax.plot(x, values, marker='o', linewidth=3, markersize=8)
-    # fill under curve for emphasis
-    ax.fill_between(x, values, 1, alpha=0.12)
-    # highlight low scores
-    for xi, yi in zip(x, values):
-        color = '#d9534f' if yi <= 2 else ('#f0ad4e' if yi <= 3 else '#5cb85c')
-        ax.scatter([xi], [yi], s=140, color=color, zorder=5)
-        ax.annotate(str(yi), (xi, yi+0.12), ha='center', fontsize=10, fontweight='bold')
+    ax.plot(x, values, marker='o')
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=30, ha='right')
-    ax.set_ylim(0.8, 6.4)
-    ax.set_yticks([1,2,3,4,5,6])
+    ax.set_ylim(1, 6)
     ax.set_ylabel('Score (1-6)')
-    ax.set_title('Differentiated Observation — Combined View')
-    # summary box for teacher
-    avg = np.mean(values)
-    low_count = sum(1 for v in values if v <= 3)
-    summary_text = f"Average: {avg:.2f} · Parameters needing attention (<=3): {low_count}"
-    ax.text(0.01, 0.98, summary_text, transform=ax.transAxes, fontsize=10, va='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-    ax.grid(axis='y', linestyle='--', alpha=0.6)
-    plt.tight_layout()
-    return fig
-
-# Helper: create tiles figure (3x3 grid of horizontal bars)
-def create_tiles_figure(labels, values):
-    n = len(labels)
-    cols = 3
-    rows = int(np.ceil(n/cols))
-    fig, axs = plt.subplots(rows, cols, figsize=(10, 3*rows))
-    axs = axs.flatten()
-    for i, (lab, val) in enumerate(zip(labels, values)):
-        ax = axs[i]
-        ax.barh([0], [val], height=0.6)
-        ax.set_xlim(0, 6)
-        ax.set_yticks([])
-        ax.set_title(f"{lab} — {val}")
-        ax.set_xticks([1,2,3,4,5,6])
-        # color indicating level
-        bar = ax.patches[0]
-        if val <= 2:
-            bar.set_color('#d9534f')
-        elif val <= 3:
-            bar.set_color('#f0ad4e')
-        else:
-            bar.set_color('#5cb85c')
-    # hide unused axes
-    for j in range(n, len(axs)):
-        fig.delaxes(axs[j])
-    plt.suptitle('Parameter Tiles — quick teacher view')
-    plt.tight_layout(rect=[0,0,1,0.96])
-    return fig
-
-# Create figure based on selection
-if st.session_state['graph_type'] == 'combined':
-    fig = create_combined_figure(labels, values)
+    ax.set_title('Observation — combined')
+    ax.grid(axis='y', linestyle='--', alpha=0.5)
 else:
-    fig = create_tiles_figure(labels, values)
+    fig.clf()
+    n = len(labels)
+    fig, axs = plt.subplots(nrows=n, ncols=1, figsize=(6, 2*n), constrained_layout=True)
+    for i, lab in enumerate(labels):
+        axs[i].plot([1, 2], [values[i], values[i]], marker='o')
+        axs[i].set_xlim(0.5, 2.5)
+        axs[i].set_ylim(1, 6)
+        axs[i].set_yticks([1, 2, 3, 4, 5, 6])
+        axs[i].set_xticks([])
+        axs[i].set_ylabel('')
+        axs[i].set_title(lab)
 
+# Show the figure
 st.pyplot(fig)
 
-# ---------------------------
-# Downloads: create PDF (preferred) and PNG. Include teacher notes on PDF.
-# ---------------------------
-# Prepare filename-safe email
+# Downloadable PNG
+buf = BytesIO()
+fig.savefig(buf, format='png', bbox_inches='tight')
+buf.seek(0)
 filename_safe_email = email.replace('@', '_at_').replace('.', '_') if email else "unknown"
-
-# PDF creation
-pdf_buf = BytesIO()
-with PdfPages(pdf_buf) as pdf:
-    # first page: the figure
-    pdf.savefig(fig, bbox_inches='tight')
-    # second page: teacher notes + metadata
-    fig2 = plt.figure(figsize=(8.27, 11.69))  # A4
-    fig2.text(0.01, 0.98, f"Student: {filename_safe_email}    Batch: {class_code}    Date: {obs_date}", fontsize=10)
-    fig2.text(0.01, 0.92, "Teacher Notes:", fontsize=12, fontweight='bold')
-    wrapped = notes or "--"
-    # simple wrapping
-    fig2.text(0.01, 0.86, wrapped, fontsize=10)
-    pdf.savefig(fig2, bbox_inches='tight')
-
-pdf_buf.seek(0)
-
-# PNG creation
-png_buf = BytesIO()
-fig.savefig(png_buf, format='png', bbox_inches='tight')
-png_buf.seek(0)
-
-st.download_button(label="📥 Download report (PDF)", data=pdf_buf, file_name=f"observation_report_{class_code}_{filename_safe_email}_{obs_date}.pdf", mime="application/pdf")
-st.download_button(label="📥 Download graph (PNG)", data=png_buf, file_name=f"observation_{class_code}_{filename_safe_email}_{obs_date}.png", mime="image/png")
+st.download_button(label="📥 Download graph (PNG)", data=buf, file_name=f"observation_{class_code}_{filename_safe_email}_{obs_date}.png", mime="image/png")
 
 # Download history CSV
 if class_code and email:
@@ -425,4 +319,4 @@ if class_code and email:
 
 st.write("---")
 
-st.caption("Notes: the PDF download includes the chart and the teacher notes. If you are using DB mode, notes are saved to the DB. Otherwise they are stored in the local CSV fallback.")
+st.caption("Notes: To use PostgreSQL DB, add `Observation` model and helper functions (save_observation, get_latest_observation, get_observations_history) to your db.py and set USE_DB by ensuring those functions import successfully. If no DB is available, this page will fall back to a local CSV file (observations_store.csv).")
