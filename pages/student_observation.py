@@ -140,12 +140,12 @@ with home_col2:
 
 st.write("---")
 
-st.markdown(
-    "This page lets a teacher record personal observations for a student across multiple differentiated-classroom parameters.
+st.markdown("""
+This page lets a teacher record personal observations for a student across multiple differentiated-classroom parameters.
 
-"
-    "Provide the batch/class code and the student's email; the app will verify them against your register (Google Sheet). Then move the sliders to record the student's current level. You can save and later re-open or update these values."
-)
+Provide the batch/class code and the student's email; the app will verify them against your register (Google Sheet). Then move the sliders to record the student's current level. You can save and later re-open or update these values.
+""")
+
 
 # Input boxes
 col1, col2, col3 = st.columns([3, 4, 3])
