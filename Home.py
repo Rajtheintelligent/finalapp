@@ -61,13 +61,19 @@ with st.expander("SSC", expanded=True):
             st.switch_page("pages/SSC_English.py")
             
     st.markdown("---")
-    c1, c2 = st.columns(2)
+    c1, c2, c3 = st.columns(3)
     with c1:
         if st.button("Student Drilldown", key="btn_student_drilldown"):
             st.switch_page("pages/student_drilldown.py")
     with c2:
         if st.button("Teacher Dashboard", key="btn_teacher_dashboard"):
             st.switch_page("pages/teacher_dashboard.py")
+    with c3:
+        if st.button("Student Observation", key="btn_Student Observation"):
+            st.switch_page("pages/student_observation.py")
+
+
+
 
 
 
