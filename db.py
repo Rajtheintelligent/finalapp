@@ -3,6 +3,9 @@ from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 import streamlit as st
 import pandas as pd
 from sqlalchemy import func
+from sqlalchemy import Date, DateTime, Float
+from datetime import datetime, date
+
 
 # =============================================================
 # Database setup
@@ -58,10 +61,29 @@ class Question(Base):
     subtopic = Column(String(100), index=True)
     question_no = Column(String(50), index=True)
     question_text = Column(String(1000))
-
     # optional relationship
     responses = relationship("Response", back_populates="question")
-
+           
+class Observation(Base):
+    __tablename__ = "observations"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), index=True)
+    observation_date = Column(Date, nullable=False, index=True)
+    # store 9 parameter integers 1..6
+    param_1 = Column(Integer, nullable=False)
+    param_2 = Column(Integer, nullable=False)
+    param_3 = Column(Integer, nullable=False)
+    param_4 = Column(Integer, nullable=False)
+    param_5 = Column(Integer, nullable=False)
+    param_6 = Column(Integer, nullable=False)
+    param_7 = Column(Integer, nullable=False)
+    param_8 = Column(Integer, nullable=False)
+    param_9 = Column(Integer, nullable=False)
+    teacher_email = Column(String(100), nullable=True)
+    notes = Column(String(2000), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+                             
+    student = relationship("Student", backref="observations")
 
 # NOTE: create_all() will create missing tables, but it WILL NOT add new columns
 # to existing tables. If you are adding quiz_id to an existing database, run a
@@ -338,5 +360,90 @@ def mark_and_check_teacher_notified(batch_code: str, subject: str, subtopic: str
         db.add(DashboardNotify(batch_code=batch_code, subject=subject, subtopic=subtopic, notified=True))
         db.commit()
         return True
+    finally:
+        db.close()
+
+def save_observation(class_code: str, email: str, obs_date: date, params: dict, teacher_email: str = None, notes: str = None):
+    """
+    params: dict with keys 'param_1'...'param_9' -> integer 1..6
+    """
+    db = SessionLocal()
+    try:
+        student = db.query(Student).filter(func.lower(Student.email) == func.lower(email.strip())).first()
+        if not student:
+            # try creating student from class_code and email if not present
+            student = Student(name=None, email=email.strip(), class_code=class_code.strip())
+            db.add(student)
+            db.commit()
+            db.refresh(student)
+
+        obs = Observation(
+            student_id=student.id,
+            observation_date=obs_date,
+            param_1=int(params.get("param_1", 3)),
+            param_2=int(params.get("param_2", 3)),
+            param_3=int(params.get("param_3", 3)),
+            param_4=int(params.get("param_4", 3)),
+            param_5=int(params.get("param_5", 3)),
+            param_6=int(params.get("param_6", 3)),
+            param_7=int(params.get("param_7", 3)),
+            param_8=int(params.get("param_8", 3)),
+            param_9=int(params.get("param_9", 3)),
+            teacher_email=teacher_email,
+            notes=notes
+        )
+        db.add(obs)
+        db.commit()
+        db.refresh(obs)
+        return obs
+    finally:
+        db.close()
+
+
+def get_latest_observation(class_code: str, email: str):
+    db = SessionLocal()
+    try:
+        student = db.query(Student).filter(func.lower(Student.email) == func.lower(email.strip())).first()
+        if not student:
+            return None
+        obs = (
+            db.query(Observation)
+              .filter(Observation.student_id == student.id)
+              .order_by(Observation.observation_date.desc(), Observation.created_at.desc())
+              .first()
+        )
+        return obs
+    finally:
+        db.close()
+
+
+def get_observations_history(class_code: str, email: str) -> pd.DataFrame:
+    db = SessionLocal()
+    try:
+        student = db.query(Student).filter(func.lower(Student.email) == func.lower(email.strip())).first()
+        if not student:
+            return pd.DataFrame()
+        q = db.query(Observation).filter(Observation.student_id == student.id).order_by(Observation.observation_date.asc())
+        rows = q.all()
+        if not rows:
+            return pd.DataFrame()
+        data = []
+        for r in rows:
+            data.append({
+                "id": r.id,
+                "observation_date": r.observation_date.isoformat() if r.observation_date else None,
+                "param_1": r.param_1,
+                "param_2": r.param_2,
+                "param_3": r.param_3,
+                "param_4": r.param_4,
+                "param_5": r.param_5,
+                "param_6": r.param_6,
+                "param_7": r.param_7,
+                "param_8": r.param_8,
+                "param_9": r.param_9,
+                "teacher_email": r.teacher_email,
+                "notes": r.notes,
+            })
+        return pd.DataFrame(data)
     finally:
         db.close()
