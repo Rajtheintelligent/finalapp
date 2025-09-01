@@ -62,7 +62,16 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
+st.markdown(
+    """
+    <style>
+      #MainMenu {visibility: hidden;}    /* top-right \"hamburger\" menu */
+      header {visibility: hidden;}      /* top bar containing chevrons in some versions */
+      footer {visibility: hidden;}      /* bottom Streamlit footer */
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 # ---------- Session state defaults ----------
 if "student_info" not in ss:
