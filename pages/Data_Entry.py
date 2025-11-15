@@ -159,7 +159,7 @@ with right:
         if 'imported_df' in st.session_state and not st.session_state.imported_df.empty:
             # produce zipped csv per batch or a single file
             df = st.session_state.imported_df
-            st.success("Batch details prepared below."")
+            st.success("Batch details prepared below.")
             # show a table of counts
             st.table(df.groupby('Batch').size().rename('Count').reset_index())
             # provide per-batch CSV downloads
