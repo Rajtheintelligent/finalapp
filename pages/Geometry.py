@@ -1,17 +1,15 @@
-import streamlit as st
-from collections import defaultdict
+\import streamlit as st
 
 # ------------------------------------------------------------
 # PAGE CONFIG
 # ------------------------------------------------------------
 st.set_page_config(
     page_title="SSC Geometry",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 # ------------------------------------------------------------
-# HOME BUTTON
+# HOME NAVIGATION
 # ------------------------------------------------------------
 st.page_link("Home.py", label="🏠 Home", icon="↩️")
 
@@ -19,81 +17,161 @@ st.page_link("Home.py", label="🏠 Home", icon="↩️")
 # SIDEBAR
 # ------------------------------------------------------------
 st.sidebar.title("🔧 Select Parameters")
-board = st.sidebar.selectbox("Select Board", ["SSC", "ICSE"], index=0)
-subject = st.sidebar.selectbox("Select Subject", ["Mathematics", "Science", "English"], index=0)
-
-st.sidebar.markdown("<br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
-st.sidebar.link_button("📩 Feedback Form", "https://example.com/feedback-form")
+board = st.sidebar.selectbox("Board", ["SSC", "ICSE"], index=0)
+subject = st.sidebar.selectbox("Subject", ["Mathematics", "Science", "English"], index=0)
 
 # ------------------------------------------------------------
 # HEADER
 # ------------------------------------------------------------
-st.title("📘 SSC Grade 10 Geometry (2024–25)")
-st.markdown("Below are chapter-wise practice sets with linked assessments.")
+st.title("📘 SSC Grade 10 Geometry")
+st.markdown("Below are the chapters and practice sets. Please paste links manually inside this file.")
 
 # ------------------------------------------------------------
-# RAW GEOMETRY DATA (STATIC)
+# ---- MANUAL LINK ENTRY SECTION (EDIT THESE) ----
 # ------------------------------------------------------------
-@st.cache_data
-def load_geometry_structure():
-    return [
-        ("One", "Similarity", "Practice_Set-1.2"),
-        ("One", "Similarity", "Practice_Set-1.3"),
-        ("One", "Similarity", "Practice_Set-1.4"),
+# You will fill your actual Form / Kahoot / Blooket links here!
 
-        ("Two", "Pythagoras Theorem", "Practice_Set-2.1"),
-        ("Two", "Pythagoras Theorem", "Practice_Set-2.2"),
+links = {
 
-        ("Three", "Circle", "Practice_Set-3.1"),
-        ("Three", "Circle", "Practice_Set-3.2"),
-        ("Three", "Circle", "Practice_Set-3.3"),
-        ("Three", "Circle", "Practice_Set-3.4"),
-        ("Three", "Circle", "Practice_Set-3.5"),
-    ]
+    "Similarity": {
+        "Practice_Set-1.2": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        },
+        "Practice_Set-1.3": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        },
+        "Practice_Set-1.4": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        }
+    },
 
-raw_data = load_geometry_structure()
+    "Pythagoras Theorem": {
+        "Practice_Set-2.1": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        },
+        "Practice_Set-2.2": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        }
+    },
+
+    "Circle": {
+        "Practice_Set-3.1": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        },
+        "Practice_Set-3.2": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        },
+        "Practice_Set-3.3": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        },
+        "Practice_Set-3.4": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        },
+        "Practice_Set-3.5": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        }
+    },
+
+    "Co-ordinate Geometry": {
+        "Practice_Set-5.1": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        },
+        "Practice_Set-5.2": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        },
+        "Practice_Set-5.3": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        }
+    },
+
+    "Trigonometry": {
+        "Practice_Set-6.0": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        },
+        "Practice_Set-6.1": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        },
+        "Practice_Set-6.2": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        }
+    },
+
+    "Mensuration": {
+        "Practice_Set-7.1": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        },
+        "Practice_Set-7.3": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        },
+        "Practice_Set-7.4": {
+            "Form": "",
+            "Kahoot": "",
+            "Blooket": ""
+        }
+    },
+
+}
 
 # ------------------------------------------------------------
-# GROUP DATA BY CHAPTERS
-# ------------------------------------------------------------
-chapters = defaultdict(list)
-
-for chap_num, chap_name, practice in raw_data:
-    chapters[chap_name].append(practice)
-
-# ------------------------------------------------------------
-# CHECK LINKS STORAGE
-# ------------------------------------------------------------
-if "geometry_links" not in st.session_state:
-    st.warning("⚠️ No saved links found. Please visit the Geometry Link Manager page.")
-    st.stop()
-
-stored_links = st.session_state.geometry_links
-
-# ------------------------------------------------------------
-# RENDER CHAPTERS
+# RENDER CONTENT
 # ------------------------------------------------------------
 if board == "SSC" and subject == "Mathematics":
-    st.subheader("📚 Geometry Chapters")
 
-    for chapter_name, practice_sets in chapters.items():
+    for chapter, practice_sets in links.items():
 
         with st.container(border=True):
-            st.markdown(f"### 📘 {chapter_name}")
+            st.subheader(f"📘 {chapter}")
 
-            for ps in sorted(practice_sets):
+            for ps, linkset in practice_sets.items():
 
                 with st.expander(f"📝 {ps.replace('_',' ')}"):
 
-                    links = stored_links.get(ps, {"Form": "", "Kahoot": "", "Blooket": ""})
-
                     col1, col2, col3 = st.columns(3)
+
                     with col1:
-                        st.link_button("📄 Form", links["Form"])
+                        st.link_button("📄 Form", linkset["Form"] or "#")
+
                     with col2:
-                        st.link_button("🎯 Kahoot", links["Kahoot"])
+                        st.link_button("🎯 Kahoot", linkset["Kahoot"] or "#")
+
                     with col3:
-                        st.link_button("🎮 Blooket", links["Blooket"])
+                        st.link_button("🎮 Blooket", linkset["Blooket"] or "#")
 
 else:
-    st.info("Please select SSC Board and Mathematics subject to view Geometry content.")
+    st.info("Please select SSC Board & Mathematics to continue.")
