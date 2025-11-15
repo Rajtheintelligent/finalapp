@@ -11,6 +11,11 @@ st.set_page_config(
 )
 
 # ------------------------------------------------------------
+# HOME BUTTON (TOP LEFT)
+# ------------------------------------------------------------
+st.page_link("Home.py", label="🏠 Home", icon="↩️")
+
+# ------------------------------------------------------------
 # SIDEBAR
 # ------------------------------------------------------------
 st.sidebar.title("🔧 Select Parameters")
@@ -28,7 +33,7 @@ st.title("📘 SSC Grade 10 Geometry (2024–25)")
 st.markdown("Below are chapter-wise practice sets with linked assessments.")
 
 # ------------------------------------------------------------
-# RAW GEOMETRY DATA (CLEANED)
+# RAW GEOMETRY DATA
 # ------------------------------------------------------------
 data = [
     ("One", "Similarity", "Practice_Set-1.2"),
@@ -53,10 +58,9 @@ data = [
 ]
 
 # ------------------------------------------------------------
-# GROUP DATA BY CHAPTERS
+# GROUP DATA
 # ------------------------------------------------------------
 chapters = defaultdict(list)
-
 for chap_num, chap_name, practice in data:
     chapters[chap_name].append(practice)
 
@@ -67,25 +71,18 @@ if board == "SSC" and subject == "Mathematics":
     st.subheader("📚 Geometry Chapters")
 
     for chapter_name, practice_sets in chapters.items():
-
-        # --- BOX CONTAINER FOR CHAPTER ---
         with st.container(border=True):
             st.markdown(f"### 📘 {chapter_name}")
 
-            # --- DROPDOWNS FOR PRACTICE SETS ---
             for ps in sorted(practice_sets):
-
-                with st.expander(f"📝 {ps.replace('_',' ')}"):
+                with st.expander(f"📝 {ps.replace('_', ' ')}"):
 
                     col1, col2, col3 = st.columns(3)
 
                     with col1:
-                        # Placeholder form URL
                         st.link_button("📄 Form", f"/form_page?chapter={chapter_name}&ps={ps}")
-
                     with col2:
                         st.link_button("🎯 Kahoot", "https://example.com/kahoot")
-
                     with col3:
                         st.link_button("🎮 Blooket", "https://example.com/blooket")
 
