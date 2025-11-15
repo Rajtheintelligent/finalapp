@@ -23,7 +23,7 @@ subject = st.sidebar.selectbox("Subject", ["Mathematics", "Science", "English"],
 # ------------------------------------------------------------
 # HEADER
 # ------------------------------------------------------------
-st.title("📗 SSC Grade 10 Science — Part 1")
+st.title("📗 SSC Grade 10 Science — Part 2")
 st.markdown("Below are the chapters and subtopics. Paste your Form / Kahoot / Blooket links in the `links` dictionary below.")
 
 # ------------------------------------------------------------
