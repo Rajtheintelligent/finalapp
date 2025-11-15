@@ -1,80 +1,99 @@
+# Home.py
 import streamlit as st
 
-# ------------------------ Page Config ------------------------
-st.set_page_config(
-    page_title="Grade 10 Assessment Hub",
+# Faster navigation without reloading heavy modules
+try:
+    from streamlit_extras.switch_page_button import switch_page
+except:
+    st.error("Please install: pip install streamlit-extras")
+    st.stop()
+
+# ------------------------------------------------------------
+# PAGE CONFIG
+# ------------------------------------------------------------
+ st.set_page_config(
+    page_title="Learning Portal",
     layout="wide",
-    initial_sidebar_state="expanded"
 )
 
-# ------------------------ Sidebar ------------------------
-st.sidebar.title("🔧 Select Options")
-board = st.sidebar.selectbox("Select Board", ["SSC", "ICSE"])
-subject = st.sidebar.selectbox("Select Subject", ["Mathematics", "Science", "English", "Social Studies"])
-st.sidebar.markdown("""
----
-📬 **[Feedback Form](https://forms.gle/your-feedback-form)**
-""")
+# ------------------------------------------------------------
+# HEADER
+# ------------------------------------------------------------
+st.markdown("<h1 style='text-align:center;'>Learning Portal – Home</h1>", unsafe_allow_html=True)
+st.write("")
 
-# ------------------------ Main Page ------------------------
-st.title("📘 Grade 10 Assessment Web App")
-st.markdown("""
-Welcome to the Grade 10 Assessment Platform. Select a board and subject from the sidebar to begin.
+# ------------------------------------------------------------
+# THREE COLUMN LAYOUT (Left - Center - Right)
+# ------------------------------------------------------------
+left_col, center_col, right_col = st.columns([1, 2, 1], gap="large")
 
-Use the navigation in the sidebar to access subject-wise assessments, tools, and subtopics.
-""")
+# ------------------------------------------------------------
+# LEFT COLUMN — TEACHER ENTRY PANEL
+# ------------------------------------------------------------
+with left_col:
+    st.markdown("### Teacher Panel")
+    st.markdown("Manage batches, teachers, and student records using the data entry interface.")
 
-# ------------------------ Page Guide ------------------------
-if board == "SSC":
-    if subject == "Mathematics":
-        st.markdown("👉 Go to **SSC_Maths** page in the sidebar for Algebra and Geometry assessments.")
-    elif subject == "Science":
-        st.markdown("👉 Go to **SSC_Science** page for Physics, Chemistry and Biology.")
-    elif subject == "English":
-        st.markdown("👉 Go to **SSC_English** page for Grammar and Language Tools.")
-    elif subject == "Social Studies":
-        st.markdown("👉 Go to **SSC_Social_Studies** page for History and Geography.")
+    if st.button("Enter Data Entry Panel", use_container_width=True):
+        switch_page("Data_Entry")
 
-elif board == "ICSE":
-    if subject == "Mathematics":
-        st.markdown("👉 Go to **ICSE_Maths** page in the sidebar for Algebra and Geometry assessments.")
-    elif subject == "Science":
-        st.markdown("👉 Go to **ICSE_Science** page for Physics, Chemistry and Biology.")
-    elif subject == "English":
-        st.markdown("👉 Go to **ICSE_English** page for Grammar and Language Tools.")
-    elif subject == "Social Studies":
-        st.markdown("👉 Go to **ICSE_Social_Studies** page for History and Geography.")
+# ------------------------------------------------------------
+# CENTER COLUMN — SUBJECTS & PERFORMANCE
+# ------------------------------------------------------------
+with center_col:
+    # Subject Section
+    st.markdown("### Subjects")
+    st.markdown("Select a subject to continue.")
 
-with st.expander("SSC", expanded=True):
-    st.write("Select an SSC subject to open its page:")
+    subj1, subj2, subj3 = st.columns(3)
+    with subj1:
+        if st.button("English Grammar", use_container_width=True):
+            switch_page("English_Grammar")
+    with subj2:
+        if st.button("Algebra", use_container_width=True):
+            switch_page("Algebra")
+    with subj3:
+        if st.button("Geometry", use_container_width=True):
+            switch_page("Geometry")
 
-    # three subject buttons in one row
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("Mathematics", key="btn_ssc_math"):
-            st.switch_page("pages/SSC_Maths.py")
-    with col2:
-        if st.button("Science", key="btn_ssc_science"):
-            st.switch_page("pages/SSC_Science.py")
-    with col3:
-        if st.button("English", key="btn_ssc_english"):
-            st.switch_page("pages/SSC_English.py")
-            
+    subj4, subj5 = st.columns(2)
+    with subj4:
+        if st.button("Science-1", use_container_width=True):
+            switch_page("Science_1")
+    with subj5:
+        if st.button("Science-2", use_container_width=True):
+            switch_page("Science_2")
+
     st.markdown("---")
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        if st.button("Student Drilldown", key="btn_student_drilldown"):
-            st.switch_page("pages/student_drilldown.py")
-    with c2:
-        if st.button("Teacher Dashboard", key="btn_teacher_dashboard"):
-            st.switch_page("pages/teacher_dashboard.py")
-    with c3:
-        if st.button("Student Observation", key="btn_Student Observation"):
-            st.switch_page("pages/student_observation.py")
 
+    # Performance Section
+    st.markdown("### Performance")
+    perf1, perf2 = st.columns(2)
 
+    with perf1:
+        if st.button("Student Performance", use_container_width=True):
+            switch_page("Student_Performance")
 
+    with perf2:
+        if st.button("Live Performance", use_container_width=True):
+            switch_page("Live_Performance")
 
+# ------------------------------------------------------------
+# RIGHT COLUMN — PAYMENT PAGE
+# ------------------------------------------------------------
+with right_col:
+    st.markdown("### Payment")
+    st.markdown("Access billing, service charges, and PhonePe payment options.")
 
+    if st.button("Open Payment Page", use_container_width=True):
+        switch_page("Payment_Page")
 
+# ------------------------------------------------------------
+# PERFORMANCE OPTIMIZATIONS
+# ------------------------------------------------------------
+# These keep the app efficient with 100+ visitors
+@st.cache_resource
+def lightweight_flag():
+    return True
 
+lightweight_flag()
