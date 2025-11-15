@@ -1,16 +1,16 @@
 # Home.py
+# Home.py
 import streamlit as st
 
 try:
     from streamlit_extras.switch_page_button import switch_page
 except:
-  #  st.error("Please install: pip install streamlit-extras")
-   # st.stop()
+    pass
 
 # ------------------------------------------------------------
 # PAGE CONFIG
 # ------------------------------------------------------------
- st.set_page_config(
+st.set_page_config(
     page_title="Learning Portal",
     layout="wide",
 )
@@ -59,7 +59,7 @@ with col_center:
                 switch_page("Algebra")
         with s3:
             if st.button("Geometry", use_container_width=True):
-                switch_page("Geometry.py")
+                switch_page("Geometry")
 
         s4, s5 = st.columns(2)
         with s4:
@@ -108,4 +108,5 @@ def lightweight_flag():
     return True
 
 lightweight_flag()
+
 
