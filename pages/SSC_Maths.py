@@ -29,18 +29,18 @@ with col_home:
             st.error("Unable to switch to Home page. Make sure `Home.py` exists in the app root and pass the exact filename to st.switch_page().")
 
 with col_title:
-    st.title("📘 SSC Mathematics")
+    st.title("📘 SSC Geometry")
 
 st.markdown("""
 Use the branch selector below to choose Algebra or Geometry. Chapters for the chosen branch will appear below.
 """)
 
 # --- Branch dropdown beneath the title (local control) ---
-branch = None
-if subject == "Mathematics":
-    branch = st.selectbox("Select Branch", ["Algebra", "Geometry"], key="branch_under_title")
-else:
-    st.info("Select 'Mathematics' in the sidebar to choose a branch and view chapters.")
+#branch = None
+#if subject == "Mathematics":
+#    branch = st.selectbox("Select Branch", ["Algebra", "Geometry"], key="branch_under_title")
+#else:
+#    st.info("Select 'Mathematics' in the sidebar to choose a branch and view chapters.")
 
 # --- Helper: display subtopics (keeps your existing UI pattern) ---
 def show_subtopics(subtopics):
@@ -48,11 +48,11 @@ def show_subtopics(subtopics):
         with st.expander(f"🔹 {topic}"):
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.link_button("Open Form", links.get("Form", "#"))
+                st.link_button("📄 Open Form", links.get("Form", "#"))
             with col2:
-                st.link_button("Open Kahoot", links.get("Kahoot", "#"))
+                st.link_button("🎯 Open Kahoot", links.get("Kahoot", "#"))
             with col3:
-                st.link_button("Open Blooket", links.get("Blooket", "#"))
+                st.link_button("🎮 Open Blooket", links.get("Blooket", "#"))
 
 # --- If Mathematics + branch selected, show chapters and subtopics ---
 if subject == "Mathematics" and branch == "Algebra":
@@ -382,3 +382,4 @@ else:
         st.info("Pick a branch above to see chapters.")
     else:
         st.info("Content for the selected subject is coming soon.")
+
