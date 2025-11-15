@@ -74,7 +74,7 @@ with col_center:
 
         with s3:
             if st.button("Geometry", use_container_width=True):
-                switch_page("pages/Geometry.py")
+                switch_page("pages/Geometry")
        
         s4, s5 = st.columns(2)
         with s4:
@@ -129,4 +129,5 @@ def lightweight_flag():
     return True
 
 lightweight_flag()
+
 
