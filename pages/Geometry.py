@@ -1,72 +1,93 @@
-# pages/4_Geometry.py
 import streamlit as st
+from collections import defaultdict
 
 # ------------------------------------------------------------
 # PAGE CONFIG
 # ------------------------------------------------------------
 st.set_page_config(
-    page_title="Geometry",
+    page_title="SSC Geometry",
     layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 # ------------------------------------------------------------
-# PAGE HEADER
+# SIDEBAR
 # ------------------------------------------------------------
-st.markdown(
-    "<h1 style='text-align:center; font-weight:700;'>Geometry</h1>",
-    unsafe_allow_html=True,
-)
-st.write("")
+st.sidebar.title("🔧 Select Parameters")
+
+board = st.sidebar.selectbox("Select Board", ["SSC", "ICSE"], index=0)
+subject = st.sidebar.selectbox("Select Subject", ["Mathematics", "Science", "English"], index=0)
+
+st.sidebar.markdown("<br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
+st.sidebar.link_button("📩 Feedback Form", "https://example.com/feedback-form")
 
 # ------------------------------------------------------------
-# MAIN CONTENT CONTAINER
+# HEADER
 # ------------------------------------------------------------
-with st.container(border=True):
-    st.markdown("### **Overview**")
-    st.markdown(
-        """
-        Welcome to the Geometry section.  
-        This page will contain chapter-wise explanations, solved examples, diagrams,
-        interactive tools, and assessments for SSC Maharashtra (Class 10).
-        """
-    )
+st.title("📘 SSC Grade 10 Geometry (2024–25)")
+st.markdown("Below are chapter-wise practice sets with linked assessments.")
 
-    st.markdown("---")
+# ------------------------------------------------------------
+# RAW GEOMETRY DATA (CLEANED)
+# ------------------------------------------------------------
+data = [
+    ("One", "Similarity", "Practice_Set-1.2"),
+    ("One", "Similarity", "Practice_Set-1.3"),
+    ("One", "Similarity", "Practice_Set-1.4"),
+    ("Two", "Pythagoras Theorem", "Practice_Set-2.1"),
+    ("Two", "Pythagoras Theorem", "Practice_Set-2.2"),
+    ("Three", "Circle", "Practice_Set-3.1"),
+    ("Three", "Circle", "Practice_Set-3.2"),
+    ("Three", "Circle", "Practice_Set-3.3"),
+    ("Three", "Circle", "Practice_Set-3.4"),
+    ("Three", "Circle", "Practice_Set-3.5"),
+    ("Five", "Co-ordinate Geometry", "Practice_Set-5.1"),
+    ("Five", "Co-ordinate Geometry", "Practice_Set-5.2"),
+    ("Five", "Co-ordinate Geometry", "Practice_Set-5.3"),
+    ("Six", "Trigonometry", "Practice_Set-6.0"),
+    ("Six", "Trigonometry", "Practice_Set-6.1"),
+    ("Six", "Trigonometry", "Practice_Set-6.2"),
+    ("Seven", "Mensuration", "Practice_Set-7.1"),
+    ("Seven", "Mensuration", "Practice_Set-7.3"),
+    ("Seven", "Mensuration", "Practice_Set-7.4"),
+]
 
-    # Chapter buttons or navigation
-    st.markdown("### **Chapters**")
+# ------------------------------------------------------------
+# GROUP DATA BY CHAPTERS
+# ------------------------------------------------------------
+chapters = defaultdict(list)
 
-    c1, c2, c3 = st.columns(3)
+for chap_num, chap_name, practice in data:
+    chapters[chap_name].append(practice)
 
-    with c1:
-        st.button("1. Basic Geometrical Concepts", use_container_width=True)
+# ------------------------------------------------------------
+# DISPLAY CHAPTER BOXES
+# ------------------------------------------------------------
+if board == "SSC" and subject == "Mathematics":
+    st.subheader("📚 Geometry Chapters")
 
-    with c2:
-        st.button("2. Lines & Angles", use_container_width=True)
+    for chapter_name, practice_sets in chapters.items():
 
-    with c3:
-        st.button("3. Triangles", use_container_width=True)
+        # --- BOX CONTAINER FOR CHAPTER ---
+        with st.container(border=True):
+            st.markdown(f"### 📘 {chapter_name}")
 
-    c4, c5, c6 = st.columns(3)
+            # --- DROPDOWNS FOR PRACTICE SETS ---
+            for ps in sorted(practice_sets):
 
-    with c4:
-        st.button("4. Quadrilaterals", use_container_width=True)
+                with st.expander(f"📝 {ps.replace('_',' ')}"):
 
-    with c5:
-        st.button("5. Circles", use_container_width=True)
+                    col1, col2, col3 = st.columns(3)
 
-    with c6:
-        st.button("6. Coordinate Geometry", use_container_width=True)
+                    with col1:
+                        # Placeholder form URL
+                        st.link_button("📄 Form", f"/form_page?chapter={chapter_name}&ps={ps}")
 
-    st.markdown("---")
+                    with col2:
+                        st.link_button("🎯 Kahoot", "https://example.com/kahoot")
 
-    st.markdown("### **Upcoming Features**")
-    st.markdown(
-        """
-        - Interactive Geometry diagrams  
-        - Problem sets with step-by-step solutions  
-        - Objective practice (MCQ)  
-        - Previous year board exam questions  
-        - Chapter-wise tests  
-        """
-    )
+                    with col3:
+                        st.link_button("🎮 Blooket", "https://example.com/blooket")
+
+else:
+    st.info("Please select SSC Board and Mathematics subject to view Geometry content.")
