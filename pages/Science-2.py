@@ -4,7 +4,7 @@ import streamlit as st
 # PAGE CONFIG
 # ------------------------------------------------------------
 st.set_page_config(
-    page_title="Science-1",
+    page_title="Science-2",
     layout="wide"
 )
 
