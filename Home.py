@@ -5,8 +5,8 @@ import streamlit as st
 try:
     from streamlit_extras.switch_page_button import switch_page
 except:
-    st.error("Please install: pip install streamlit-extras")
-    st.stop()
+   # st.error("Please install: pip install streamlit-extras")
+    #st.stop()
 
 # ------------------------------------------------------------
 # PAGE CONFIG
@@ -97,4 +97,5 @@ def lightweight_flag():
     return True
 
 lightweight_flag()
+
 
