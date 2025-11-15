@@ -8,6 +8,12 @@ from io import StringIO
 st.set_page_config(page_title="Admin — CSV Data Entry", layout="wide")
 
 # ------------------------------------------------------------
+# HOME NAVIGATION
+# ------------------------------------------------------------
+st.page_link("Home.py", label="🏠 Home", icon="↩️")
+
+
+# ------------------------------------------------------------
 # CACHE HELPERS
 # ------------------------------------------------------------
 @st.cache_data
