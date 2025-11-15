@@ -66,11 +66,11 @@ with col_center:
 
         with s4:
             if st.button("Science-1", use_container_width=True):
-                st.switch_page("pages/Science_1.py")
+                st.switch_page("pages/Science-1.py")
 
         with s5:
             if st.button("Science-2", use_container_width=True):
-                st.switch_page("pages/Science_2.py")
+                st.switch_page("pages/Science-2.py")
 
     st.write("")
 
@@ -116,3 +116,4 @@ def lightweight_flag():
     return True
 
 lightweight_flag()
+
