@@ -11,7 +11,7 @@ except:
 # ------------------------------------------------------------
 # PAGE CONFIG
 # ------------------------------------------------------------
-st.set_page_config(
+ st.set_page_config(
     page_title="Learning Portal",
     layout="wide",
 )
@@ -97,5 +97,6 @@ def lightweight_flag():
     return True
 
 lightweight_flag()
+
 
 
