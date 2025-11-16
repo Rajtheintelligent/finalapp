@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 from io import StringIO
+from utils import parse_file_bytes, get_mysql_conn_cached, cached_simple_query
+
 
 # ------------------------------------------------------------
 # PAGE CONFIG
@@ -182,7 +184,9 @@ with left:
 
     if uploaded_file:
         try:
-            df = parse_uploaded_csv(uploaded_file)
+            # use cached parser - pass file bytes + filename so cache keys are correct
+            file_bytes = uploaded_file.read()
+            df = parse_file_bytes(file_bytes, uploaded_file.name)
             required_cols = [
                 "ClassesName",
                 "Grade",
@@ -218,7 +222,14 @@ with left:
                             df2 = st.session_state.uploaded_df.copy()
                             conn = None
                             try:
-                                conn = get_db_conn()
+                                cfg = st.secrets.get("mysql", {})
+                                conn = get_mysql_conn_cached(
+                                    host=cfg["host"],
+                                    port=int(cfg.get("port", 15211)),
+                                    user=cfg["user"],
+                                    password=cfg["password"],
+                                    ssl_ca_path=cfg.get("ssl_ca_path")
+                                )
                                 cur = conn.cursor()
                                 processed = 0
                                 errors = []
