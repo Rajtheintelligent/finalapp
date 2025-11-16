@@ -11,4 +11,3 @@ streamlit-extras
 gspread
 oauth2client
 google-auth
-psycopg2-binary   # optional: remove if you never use Postgres
