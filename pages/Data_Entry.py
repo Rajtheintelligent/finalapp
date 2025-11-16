@@ -71,6 +71,90 @@ st.markdown(
 st.markdown("---")
 
 # ------------------------------------------------------------
+# Additional imports and DB helpers for MySQL import
+# ------------------------------------------------------------
+# these imports are minimal and local to the file to avoid interfering if not used
+try:
+    import mysql.connector
+    import bcrypt
+    from mysql.connector import Error
+    MYSQL_LIBS_AVAILABLE = True
+except Exception:
+    MYSQL_LIBS_AVAILABLE = False
+
+def get_db_conn():
+    """
+    Create and return a mysql.connector connection using st.secrets.
+    st.secrets should contain:
+    [mysql]
+    host = "..."
+    port = "15211"
+    user = "avnadmin"
+    password = "AVNS_..."
+    ssl_ca_path = "aiven-ca.pem"   # path on the running host
+    """
+    if not MYSQL_LIBS_AVAILABLE:
+        raise RuntimeError("mysql-connector-python and bcrypt must be installed. Add them to requirements.txt")
+    cfg = st.secrets.get("mysql", {})
+    host = cfg.get("host")
+    port = int(cfg.get("port", 15211))
+    user = cfg.get("user")
+    password = cfg.get("password")
+    ssl_ca = cfg.get("ssl_ca_path")  # local path to aiven-ca.pem
+    if not (host and user and password):
+        raise RuntimeError("Missing DB credentials in st.secrets['mysql']. Provide host,user,password (and ssl_ca_path).")
+    return mysql.connector.connect(
+        host=host,
+        port=port,
+        user=user,
+        password=password,
+        ssl_ca=ssl_ca,
+        ssl_verify_cert=True,
+        autocommit=False
+    )
+
+def hash_pw(plain):
+    if plain is None:
+        plain = ""
+    try:
+        return bcrypt.hashpw(plain.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    except Exception:
+        # fallback - don't fail hard, but highly recommend bcrypt to be installed
+        return plain
+
+def upsert_head_teacher(cursor, name, email, password_plain):
+    cursor.execute("SELECT id FROM head_teachers WHERE email = %s", (email,))
+    r = cursor.fetchone()
+    if r:
+        return r[0]
+    pw = hash_pw(password_plain)
+    cursor.execute("INSERT INTO head_teachers (name, email, password_hash) VALUES (%s,%s,%s)",
+                   (name, email, pw))
+    return cursor.lastrowid
+
+def get_or_create_class(cursor, class_name, grade, head_id, logo_url, batch):
+    cursor.execute("SELECT id FROM classes WHERE class_name = %s AND head_teacher_id = %s",
+                   (class_name, head_id))
+    r = cursor.fetchone()
+    if r:
+        return r[0]
+    cursor.execute("INSERT INTO classes (class_name, grade, head_teacher_id, logo_url, batch) VALUES (%s,%s,%s,%s,%s)",
+                   (class_name, grade, head_id, logo_url, batch))
+    return cursor.lastrowid
+
+def upsert_student(cursor, class_id, name, email, pw_plain):
+    cursor.execute("SELECT id FROM students WHERE student_email = %s AND class_id = %s", (email, class_id))
+    r = cursor.fetchone()
+    pw_hash = hash_pw(pw_plain)
+    if r:
+        cursor.execute("UPDATE students SET student_name=%s, student_password_hash=%s WHERE id=%s",
+                       (name, pw_hash, r[0]))
+        return r[0]
+    cursor.execute("INSERT INTO students (class_id, student_name, student_email, student_password_hash) VALUES (%s,%s,%s,%s)",
+                   (class_id, name, email, pw_hash))
+    return cursor.lastrowid
+
+# ------------------------------------------------------------
 # Left: Template download + upload area
 # ------------------------------------------------------------
 left, right = st.columns([2, 2])
@@ -126,11 +210,63 @@ with left:
                     st.markdown("**Summary by batch:**")
                     st.table(pd.DataFrame(list(counts.items()), columns=['Batch','Count']))
 
-                    # final import button (writes to session storage; replace with DB write later)
-                    if st.button("✅ Import to system (session only)"):
-                        # In production, replace this with DB write helper
-                        st.session_state.imported_df = df.copy()
-                        st.success(f"Imported {len(df)} rows into session storage. (Replace with DB write in production)")
+                    # final import button (writes to DB)
+                    if st.button("✅ Import to system (DB)"):
+                        if st.session_state.uploaded_df is None or st.session_state.uploaded_df.empty:
+                            st.error("No data to import. Upload and validate first.")
+                        else:
+                            df2 = st.session_state.uploaded_df.copy()
+                            conn = None
+                            try:
+                                conn = get_db_conn()
+                                cur = conn.cursor()
+                                processed = 0
+                                errors = []
+                                for i, row in df2.iterrows():
+                                    try:
+                                        class_name = row.get("ClassesName") or "Unknown"
+                                        grade = row.get("Grade")
+                                        head_name = row.get("HeadTeacher")
+                                        head_email = row.get("HeadTeacherEmail")
+                                        head_pass = row.get("HeadTeacherPassword")
+                                        batch = row.get("Batch")
+                                        student_name = row.get("StudentName")
+                                        student_email = row.get("StudentEmail")
+                                        student_pass = row.get("StudentPassword")
+                                        logo_url = row.get("LogoUrl", None)
+
+                                        if pd.isna(head_email) or pd.isna(student_email):
+                                            raise ValueError("Missing head or student email")
+
+                                        head_id = upsert_head_teacher(cur, head_name, head_email, head_pass)
+                                        class_id = get_or_create_class(cur, class_name, grade, head_id, logo_url, batch)
+                                        upsert_student(cur, class_id, student_name, student_email, student_pass)
+
+                                        processed += 1
+                                    except Exception as e:
+                                        errors.append({"row": int(i)+1, "error": str(e)})
+                                        # continue with next rows
+
+                                conn.commit()
+                                st.success(f"DB import finished. Rows processed: {processed}. Errors: {len(errors)}")
+                                if errors:
+                                    st.json(errors)
+                                # optionally set imported_df for download utilities
+                                st.session_state.imported_df = df2.copy()
+                            except Error as e:
+                                if conn:
+                                    conn.rollback()
+                                st.error(f"MySQL error: {e}")
+                            except Exception as e:
+                                st.error(f"Unexpected error: {e}")
+                            finally:
+                                if conn:
+                                    conn.close()
+
+                    # optional: keep session-only import fallback (commented)
+                    # if st.button("✅ Import to system (session only)"):
+                    #     st.session_state.imported_df = df.copy()
+                    #     st.success(f"Imported {len(df)} rows into session storage. (Replace with DB write in production)")
         except Exception as e:
             st.exception(e)
 
