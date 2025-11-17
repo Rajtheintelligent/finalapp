@@ -1,28 +1,24 @@
+# Data_Entry.py
+# Streamlit page: Upload CSV/XLSX, validate columns, and import into MySQL.
+# Requirements (for DB import): mysql-connector-python, bcrypt
+# For quick local testing you may omit those and use session-only import.
+
 import streamlit as st
 import io
 import pandas as pd
 import traceback
-from io import StringIO
-#from utils import parse_file_bytes, get_mysql_conn_cached, cached_simple_query
-
 
 # ------------------------------------------------------------
 # PAGE CONFIG
 # ------------------------------------------------------------
 st.set_page_config(page_title="Admin — CSV Data Entry", layout="wide")
-
-# ------------------------------------------------------------
-# HOME NAVIGATION
-# ------------------------------------------------------------
 st.page_link("Home.py", label="🏠 Home", icon="↩️")
-
 
 # ------------------------------------------------------------
 # CACHE HELPERS
 # ------------------------------------------------------------
 @st.cache_data
 def make_template_df():
-    # create template with header and one example row
     cols = [
         "ClassesName",
         "Grade",
@@ -48,94 +44,78 @@ def make_template_df():
     df = pd.DataFrame([example], columns=cols)
     return df
 
+
 @st.cache_data
 def parse_uploaded_csv(uploaded) -> pd.DataFrame:
-    # returns dataframe or raises
+    """
+    Accept a Streamlit UploadedFile (file-like) and return a pandas DataFrame.
+    Supports CSV and Excel (xlsx/xls). Raises exception on failure.
+    """
     if uploaded is None:
         return pd.DataFrame()
     try:
-        df = pd.read_csv(uploaded)
+        # try CSV first
+        uploaded.seek(0)
+        return pd.read_csv(uploaded)
     except Exception:
-        df = pd.read_excel(uploaded)
-    return df
+        try:
+            uploaded.seek(0)
+            return pd.read_excel(uploaded)
+        except Exception as e:
+            # re-raise with helpful message
+            raise RuntimeError(f"Failed to parse uploaded file: {e}")
+
 
 # ------------------------------------------------------------
 # SESSION STATE INIT
 # ------------------------------------------------------------
 if "uploaded_df" not in st.session_state:
     st.session_state.uploaded_df = pd.DataFrame()
+if "imported_df" not in st.session_state:
+    st.session_state.imported_df = pd.DataFrame()
 
 # ------------------------------------------------------------
 # HEADER
 # ------------------------------------------------------------
 st.title("📥 Admin — CSV-based Data Entry")
 st.markdown(
-    "This page provides a simple, formal CSV workflow so teachers can prepare student lists offline and upload them in one batch."
+    "This page provides a simple CSV workflow so teachers can prepare student lists offline and upload them in one batch."
 )
 st.markdown("---")
 
 # ------------------------------------------------------------
-# Additional imports and DB helpers for MySQL import
+# DB helpers (optional)
 # ------------------------------------------------------------
-# these imports are minimal and local to the file to avoid interfering if not used
+# try to import DB libs; if not available, we'll run in "session only" mode
 try:
     import mysql.connector
-    import bcrypt
     from mysql.connector import Error
+    import bcrypt
     MYSQL_LIBS_AVAILABLE = True
 except Exception:
     MYSQL_LIBS_AVAILABLE = False
 
-def get_db_conn():
-    """
-    Create and return a mysql.connector connection using st.secrets.
-    st.secrets should contain:
-    [mysql]
-    host = "..."
-    port = "15211"
-    user = "avnadmin"
-    password = "AVNS_..."
-    ssl_ca_path = "aiven-ca.pem"   # path on the running host
-    """
-    if not MYSQL_LIBS_AVAILABLE:
-        raise RuntimeError("mysql-connector-python and bcrypt must be installed. Add them to requirements.txt")
-    cfg = st.secrets.get("mysql", {})
-    host = cfg.get("host")
-    port = int(cfg.get("port", 15211))
-    user = cfg.get("user")
-    password = cfg.get("password")
-    ssl_ca = cfg.get("ssl_ca_path")  # local path to aiven-ca.pem
-    if not (host and user and password):
-        raise RuntimeError("Missing DB credentials in st.secrets['mysql']. Provide host,user,password (and ssl_ca_path).")
-    return mysql.connector.connect(
-        host=host,
-        port=port,
-        user=user,
-        password=password,
-        ssl_ca=ssl_ca,
-        ssl_verify_cert=True,
-        autocommit=False
-    )
-
 def hash_pw(plain):
+    """Return bcrypt hash if available, else return plain (dev only)."""
     if plain is None:
         plain = ""
-    try:
-        return bcrypt.hashpw(plain.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-    except Exception:
-        # fallback - don't fail hard, but highly recommend bcrypt to be installed
+    if MYSQL_LIBS_AVAILABLE:
+        try:
+            return bcrypt.hashpw(plain.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        except Exception:
+            return plain
+    else:
+        # Warning: do NOT use plaintext in production. This fallback is only for local testing.
         return plain
 
-# Cached connection helper (so repeated imports in one session reuse the connection)
 @st.cache_resource
 def get_mysql_conn_cached(host: str, port: int, user: str, password: str, ssl_ca_path: str = None):
     """
-    Return a mysql.connector connection. Cached for session lifetime.
-    Note: st.cache_resource will reuse the connection object; if your environment
-    recycles containers you may need to handle reconnects.
+    Create and cache a mysql.connector connection.
+    Raises RuntimeError if mysql libs are not available.
     """
     if not MYSQL_LIBS_AVAILABLE:
-        raise RuntimeError("mysql-connector-python must be installed and available in requirements.txt")
+        raise RuntimeError("mysql-connector-python and bcrypt are required for DB import. Add them to requirements.txt")
     conn_kwargs = {
         "host": host,
         "port": port,
@@ -146,7 +126,6 @@ def get_mysql_conn_cached(host: str, port: int, user: str, password: str, ssl_ca
     if ssl_ca_path:
         conn_kwargs["ssl_ca"] = ssl_ca_path
         conn_kwargs["ssl_verify_cert"] = True
-    # create the connection and return
     return mysql.connector.connect(**conn_kwargs)
 
 def upsert_head_teacher(cursor, name, email, password_plain):
@@ -182,14 +161,14 @@ def upsert_student(cursor, class_id, name, email, pw_plain):
     return cursor.lastrowid
 
 # ------------------------------------------------------------
-# Left: Template download + upload area
+# UI - Left column: template + upload + import
 # ------------------------------------------------------------
 left, right = st.columns([2, 2])
 
 with left:
     st.subheader("1) Download CSV template")
     st.write(
-        "Click the button below to download a CSV template. The first row is an example for reference. Only use the columns shown in the template."
+        "Download a template CSV, fill it offline, then upload below. Required columns are shown in the template."
     )
 
     template_df = make_template_df()
@@ -202,119 +181,124 @@ with left:
     )
 
     st.markdown("---")
-    st.subheader("2) Upload completed CSV")
-    st.write("Select the completed CSV file using the button below. The file will be validated before import.")
+    st.subheader("2) Upload completed CSV or Excel")
+    st.write("Select the completed CSV/XLSX file using the button below. The file will be validated before import.")
 
-    uploaded_file = st.file_uploader("Upload CSV (required columns: ClassesName, Grade, HeadTeacher, HeadTeacherEmail, HeadTeacherPassword, Batch, StudentName, StudentEmail, StudentPassword)", type=["csv", "xlsx"], accept_multiple_files=False)
+    uploaded_file = st.file_uploader(
+        "Upload CSV/XLSX (required columns: ClassesName, Grade, HeadTeacher, HeadTeacherEmail, HeadTeacherPassword, Batch, StudentName, StudentEmail, StudentPassword)",
+        type=["csv", "xlsx", "xls"],
+        accept_multiple_files=False
+    )
 
     if uploaded_file:
         try:
-        # ensure file pointer at start
-        uploaded_file.seek(0)
-        # use the helper that accepts a file-like object
-        df = parse_uploaded_csv(uploaded_file)
+            # ensure pointer at start and parse
+            uploaded_file.seek(0)
+            df = parse_uploaded_csv(uploaded_file)
 
-        # normalize column names (strip whitespace)
-        df.columns = [c.strip() if isinstance(c, str) else c for c in df.columns]
+            # normalize column names (strip whitespace)
+            df.columns = [c.strip() if isinstance(c, str) else c for c in df.columns]
 
-        required_cols = [
-            "ClassesName",
-            "Grade",
-            "HeadTeacher",
-            "HeadTeacherEmail",
-            "HeadTeacherPassword",
-            "Batch",
-            "StudentName",
-            "StudentEmail",
-            "StudentPassword",
-        ]
-        missing = [c for c in required_cols if c not in df.columns]
-        if missing:
-            st.error(f"Uploaded file is missing required columns: {missing}")
-        else:
-            # limit check: max 40 students per batch
-            counts = df.groupby('Batch').size().to_dict()
-            violating = {b: n for b, n in counts.items() if n > 40}
-            if violating:
-                st.error(f"Batch size limit exceeded for: {violating}. Each batch can have up to 40 students.")
+            required_cols = [
+                "ClassesName",
+                "Grade",
+                "HeadTeacher",
+                "HeadTeacherEmail",
+                "HeadTeacherPassword",
+                "Batch",
+                "StudentName",
+                "StudentEmail",
+                "StudentPassword",
+            ]
+            missing = [c for c in required_cols if c not in df.columns]
+            if missing:
+                st.error(f"Uploaded file is missing required columns: {missing}")
             else:
-                st.success("File validated successfully.")
-                st.session_state.uploaded_df = df
-                st.dataframe(df)
-                st.markdown("**Summary by batch:**")
-                st.table(pd.DataFrame(list(counts.items()), columns=['Batch','Count']))
+                # limit check: max 40 students per batch
+                counts = df.groupby('Batch').size().to_dict()
+                violating = {b: n for b, n in counts.items() if n > 40}
+                if violating:
+                    st.error(f"Batch size limit exceeded for: {violating}. Each batch can have up to 40 students.")
+                else:
+                    st.success("File validated successfully.")
+                    st.session_state.uploaded_df = df
+                    st.dataframe(df)
+                    st.markdown("**Summary by batch:**")
+                    st.table(pd.DataFrame(list(counts.items()), columns=['Batch','Count']))
 
-                # final import button (writes to DB)
-                if st.button("✅ Import to system (DB)"):
-                    if st.session_state.uploaded_df is None or st.session_state.uploaded_df.empty:
-                        st.error("No data to import. Upload and validate first.")
-                    else:
-                        df2 = st.session_state.uploaded_df.copy()
-                        conn = None
-                        try:
-                            cfg = st.secrets.get("mysql", {})
-                            # use cached connection helper (see below)
-                            conn = get_mysql_conn_cached(
-                                host=cfg["host"],
-                                port=int(cfg.get("port", 15211)),
-                                user=cfg["user"],
-                                password=cfg["password"],
-                                ssl_ca_path=cfg.get("ssl_ca_path")
-                            )
-                            cur = conn.cursor()
-                            processed = 0
-                            errors = []
-                            for i, row in df2.iterrows():
+                    # final import button (writes to DB)
+                    if st.button("✅ Import to system (DB)"):
+                        if st.session_state.uploaded_df is None or st.session_state.uploaded_df.empty:
+                            st.error("No data to import. Upload and validate first.")
+                        else:
+                            df2 = st.session_state.uploaded_df.copy()
+                            conn = None
+                            try:
+                                # if DB libs not available, raise a clear error
+                                if not MYSQL_LIBS_AVAILABLE:
+                                    raise RuntimeError("DB libraries not installed. Add mysql-connector-python and bcrypt to requirements.txt to enable DB import.")
+                                cfg = st.secrets.get("mysql", {})
+                                conn = get_mysql_conn_cached(
+                                    host=cfg["host"],
+                                    port=int(cfg.get("port", 3306)),
+                                    user=cfg["user"],
+                                    password=cfg["password"],
+                                    ssl_ca_path=cfg.get("ssl_ca_path")
+                                )
+                                cur = conn.cursor()
+                                processed = 0
+                                errors = []
+                                for i, row in df2.iterrows():
+                                    try:
+                                        class_name = row.get("ClassesName") or "Unknown"
+                                        grade = row.get("Grade")
+                                        head_name = row.get("HeadTeacher")
+                                        head_email = row.get("HeadTeacherEmail")
+                                        head_pass = row.get("HeadTeacherPassword")
+                                        batch = row.get("Batch")
+                                        student_name = row.get("StudentName")
+                                        student_email = row.get("StudentEmail")
+                                        student_pass = row.get("StudentPassword")
+                                        logo_url = row.get("LogoUrl", None)
+
+                                        if pd.isna(head_email) or pd.isna(student_email):
+                                            raise ValueError("Missing head or student email")
+
+                                        head_id = upsert_head_teacher(cur, head_name, head_email, head_pass)
+                                        class_id = get_or_create_class(cur, class_name, grade, head_id, logo_url, batch)
+                                        upsert_student(cur, class_id, student_name, student_email, student_pass)
+
+                                        processed += 1
+                                    except Exception as e:
+                                        errors.append({"row": int(i)+1, "error": str(e)})
+                                        # continue with next rows
+
+                                conn.commit()
+                                st.success(f"DB import finished. Rows processed: {processed}. Errors: {len(errors)}")
+                                if errors:
+                                    st.json(errors)
+                                st.session_state.imported_df = df2.copy()
+                            except Exception as e:
+                                # rollback if we have a connection
                                 try:
-                                    class_name = row.get("ClassesName") or "Unknown"
-                                    grade = row.get("Grade")
-                                    head_name = row.get("HeadTeacher")
-                                    head_email = row.get("HeadTeacherEmail")
-                                    head_pass = row.get("HeadTeacherPassword")
-                                    batch = row.get("Batch")
-                                    student_name = row.get("StudentName")
-                                    student_email = row.get("StudentEmail")
-                                    student_pass = row.get("StudentPassword")
-                                    logo_url = row.get("LogoUrl", None)
-
-                                    if pd.isna(head_email) or pd.isna(student_email):
-                                        raise ValueError("Missing head or student email")
-
-                                    head_id = upsert_head_teacher(cur, head_name, head_email, head_pass)
-                                    class_id = get_or_create_class(cur, class_name, grade, head_id, logo_url, batch)
-                                    upsert_student(cur, class_id, student_name, student_email, student_pass)
-
-                                    processed += 1
-                                except Exception as e:
-                                    errors.append({"row": int(i)+1, "error": str(e)})
-                                    # continue with next rows
-
-                            conn.commit()
-                            st.success(f"DB import finished. Rows processed: {processed}. Errors: {len(errors)}")
-                            if errors:
-                                st.json(errors)
-                            st.session_state.imported_df = df2.copy()
-                        except Exception as e:
-                            # rollback if we have a connection
-                            try:
-                                if conn:
-                                    conn.rollback()
-                            except Exception:
-                                pass
-                            st.error(f"DB import error: {e}")
-                            st.exception(e)
-                        finally:
-                            try:
-                                if conn:
-                                    conn.close()
-                            except Exception:
-                                pass
-
-    except Exception as e:
-        st.exception(e)
+                                    if conn:
+                                        conn.rollback()
+                                except Exception:
+                                    pass
+                                st.error(f"DB import error: {e}")
+                                st.exception(e)
+                            finally:
+                                try:
+                                    if conn:
+                                        conn.close()
+                                except Exception:
+                                    pass
+        except Exception as e:
+            st.error("Failed to parse or process uploaded file.")
+            st.exception(e)
 
 # ------------------------------------------------------------
-# Right: Actions and utilities
+# UI - Right column: Utilities
 # ------------------------------------------------------------
 with right:
     st.subheader("Utilities")
@@ -342,12 +326,9 @@ with right:
     st.write("(Placeholder) — download batch-wise student and teacher lists. When connected to DB this will query the requested batch(es).")
     if st.button("📂 Get batch details"):
         if 'imported_df' in st.session_state and not st.session_state.imported_df.empty:
-            # produce zipped csv per batch or a single file
             df = st.session_state.imported_df
             st.success("Batch details prepared below.")
-            # show a table of counts
             st.table(df.groupby('Batch').size().rename('Count').reset_index())
-            # provide per-batch CSV downloads
             batches = sorted(df['Batch'].unique())
             for b in batches:
                 sub = df[df['Batch'] == b]
@@ -356,4 +337,4 @@ with right:
             st.info("No imported data in session. Upload & import a CSV first.")
 
 st.markdown("---")
-st.caption("Notes: This page uses a simple CSV workflow to keep load on the server minimal. Currently imports store data in the Streamlit session; replace the import action with a DB write when you are ready to integrate MySQL.")
+st.caption("Notes: This page uses a simple CSV workflow to keep load on the server minimal. Currently imports store data in the Streamlit session if DB libs are missing; add dependencies and set st.secrets['mysql'] to enable MySQL import.")
