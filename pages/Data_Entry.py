@@ -126,6 +126,29 @@ def hash_pw(plain):
         # fallback - don't fail hard, but highly recommend bcrypt to be installed
         return plain
 
+# Cached connection helper (so repeated imports in one session reuse the connection)
+@st.cache_resource
+def get_mysql_conn_cached(host: str, port: int, user: str, password: str, ssl_ca_path: str = None):
+    """
+    Return a mysql.connector connection. Cached for session lifetime.
+    Note: st.cache_resource will reuse the connection object; if your environment
+    recycles containers you may need to handle reconnects.
+    """
+    if not MYSQL_LIBS_AVAILABLE:
+        raise RuntimeError("mysql-connector-python must be installed and available in requirements.txt")
+    conn_kwargs = {
+        "host": host,
+        "port": port,
+        "user": user,
+        "password": password,
+        "autocommit": False,
+    }
+    if ssl_ca_path:
+        conn_kwargs["ssl_ca"] = ssl_ca_path
+        conn_kwargs["ssl_verify_cert"] = True
+    # create the connection and return
+    return mysql.connector.connect(**conn_kwargs)
+
 def upsert_head_teacher(cursor, name, email, password_plain):
     cursor.execute("SELECT id FROM head_teachers WHERE email = %s", (email,))
     r = cursor.fetchone()
@@ -186,102 +209,109 @@ with left:
 
     if uploaded_file:
         try:
-            # use cached parser - pass file bytes + filename so cache keys are correct
-            file_bytes = uploaded_file.read()
-            df = parse_file_bytes(file_bytes, uploaded_file.name)
-            required_cols = [
-                "ClassesName",
-                "Grade",
-                "HeadTeacher",
-                "HeadTeacherEmail",
-                "HeadTeacherPassword",
-                "Batch",
-                "StudentName",
-                "StudentEmail",
-                "StudentPassword",
-            ]
-            missing = [c for c in required_cols if c not in df.columns]
-            if missing:
-                st.error(f"Uploaded file is missing required columns: {missing}")
+        # ensure file pointer at start
+        uploaded_file.seek(0)
+        # use the helper that accepts a file-like object
+        df = parse_uploaded_csv(uploaded_file)
+
+        # normalize column names (strip whitespace)
+        df.columns = [c.strip() if isinstance(c, str) else c for c in df.columns]
+
+        required_cols = [
+            "ClassesName",
+            "Grade",
+            "HeadTeacher",
+            "HeadTeacherEmail",
+            "HeadTeacherPassword",
+            "Batch",
+            "StudentName",
+            "StudentEmail",
+            "StudentPassword",
+        ]
+        missing = [c for c in required_cols if c not in df.columns]
+        if missing:
+            st.error(f"Uploaded file is missing required columns: {missing}")
+        else:
+            # limit check: max 40 students per batch
+            counts = df.groupby('Batch').size().to_dict()
+            violating = {b: n for b, n in counts.items() if n > 40}
+            if violating:
+                st.error(f"Batch size limit exceeded for: {violating}. Each batch can have up to 40 students.")
             else:
-                # limit check: max 40 students per batch
-                counts = df.groupby('Batch').size().to_dict()
-                violating = {b: n for b, n in counts.items() if n > 40}
-                if violating:
-                    st.error(f"Batch size limit exceeded for: {violating}. Each batch can have up to 40 students.")
-                else:
-                    st.success("File validated successfully.")
-                    st.session_state.uploaded_df = df
-                    st.dataframe(df)
-                    st.markdown("**Summary by batch:**")
-                    st.table(pd.DataFrame(list(counts.items()), columns=['Batch','Count']))
+                st.success("File validated successfully.")
+                st.session_state.uploaded_df = df
+                st.dataframe(df)
+                st.markdown("**Summary by batch:**")
+                st.table(pd.DataFrame(list(counts.items()), columns=['Batch','Count']))
 
-                    # final import button (writes to DB)
-                    if st.button("✅ Import to system (DB)"):
-                        if st.session_state.uploaded_df is None or st.session_state.uploaded_df.empty:
-                            st.error("No data to import. Upload and validate first.")
-                        else:
-                            df2 = st.session_state.uploaded_df.copy()
-                            conn = None
+                # final import button (writes to DB)
+                if st.button("✅ Import to system (DB)"):
+                    if st.session_state.uploaded_df is None or st.session_state.uploaded_df.empty:
+                        st.error("No data to import. Upload and validate first.")
+                    else:
+                        df2 = st.session_state.uploaded_df.copy()
+                        conn = None
+                        try:
+                            cfg = st.secrets.get("mysql", {})
+                            # use cached connection helper (see below)
+                            conn = get_mysql_conn_cached(
+                                host=cfg["host"],
+                                port=int(cfg.get("port", 15211)),
+                                user=cfg["user"],
+                                password=cfg["password"],
+                                ssl_ca_path=cfg.get("ssl_ca_path")
+                            )
+                            cur = conn.cursor()
+                            processed = 0
+                            errors = []
+                            for i, row in df2.iterrows():
+                                try:
+                                    class_name = row.get("ClassesName") or "Unknown"
+                                    grade = row.get("Grade")
+                                    head_name = row.get("HeadTeacher")
+                                    head_email = row.get("HeadTeacherEmail")
+                                    head_pass = row.get("HeadTeacherPassword")
+                                    batch = row.get("Batch")
+                                    student_name = row.get("StudentName")
+                                    student_email = row.get("StudentEmail")
+                                    student_pass = row.get("StudentPassword")
+                                    logo_url = row.get("LogoUrl", None)
+
+                                    if pd.isna(head_email) or pd.isna(student_email):
+                                        raise ValueError("Missing head or student email")
+
+                                    head_id = upsert_head_teacher(cur, head_name, head_email, head_pass)
+                                    class_id = get_or_create_class(cur, class_name, grade, head_id, logo_url, batch)
+                                    upsert_student(cur, class_id, student_name, student_email, student_pass)
+
+                                    processed += 1
+                                except Exception as e:
+                                    errors.append({"row": int(i)+1, "error": str(e)})
+                                    # continue with next rows
+
+                            conn.commit()
+                            st.success(f"DB import finished. Rows processed: {processed}. Errors: {len(errors)}")
+                            if errors:
+                                st.json(errors)
+                            st.session_state.imported_df = df2.copy()
+                        except Exception as e:
+                            # rollback if we have a connection
                             try:
-                                cfg = st.secrets.get("mysql", {})
-                                conn = get_mysql_conn_cached(
-                                    host=cfg["host"],
-                                    port=int(cfg.get("port", 15211)),
-                                    user=cfg["user"],
-                                    password=cfg["password"],
-                                    ssl_ca_path=cfg.get("ssl_ca_path")
-                                )
-                                cur = conn.cursor()
-                                processed = 0
-                                errors = []
-                                for i, row in df2.iterrows():
-                                    try:
-                                        class_name = row.get("ClassesName") or "Unknown"
-                                        grade = row.get("Grade")
-                                        head_name = row.get("HeadTeacher")
-                                        head_email = row.get("HeadTeacherEmail")
-                                        head_pass = row.get("HeadTeacherPassword")
-                                        batch = row.get("Batch")
-                                        student_name = row.get("StudentName")
-                                        student_email = row.get("StudentEmail")
-                                        student_pass = row.get("StudentPassword")
-                                        logo_url = row.get("LogoUrl", None)
-
-                                        if pd.isna(head_email) or pd.isna(student_email):
-                                            raise ValueError("Missing head or student email")
-
-                                        head_id = upsert_head_teacher(cur, head_name, head_email, head_pass)
-                                        class_id = get_or_create_class(cur, class_name, grade, head_id, logo_url, batch)
-                                        upsert_student(cur, class_id, student_name, student_email, student_pass)
-
-                                        processed += 1
-                                    except Exception as e:
-                                        errors.append({"row": int(i)+1, "error": str(e)})
-                                        # continue with next rows
-
-                                conn.commit()
-                                st.success(f"DB import finished. Rows processed: {processed}. Errors: {len(errors)}")
-                                if errors:
-                                    st.json(errors)
-                                # optionally set imported_df for download utilities
-                                st.session_state.imported_df = df2.copy()
-                            except Error as e:
                                 if conn:
                                     conn.rollback()
-                                st.error(f"MySQL error: {e}")
-                            except Exception as e:
-                                st.error(f"Unexpected error: {e}")
-                            finally:
+                            except Exception:
+                                pass
+                            st.error(f"DB import error: {e}")
+                            st.exception(e)
+                        finally:
+                            try:
                                 if conn:
                                     conn.close()
+                            except Exception:
+                                pass
 
-                    # optional: keep session-only import fallback (commented)
-                    # if st.button("✅ Import to system (session only)"):
-                    #     st.session_state.imported_df = df.copy()
-                    #     st.success(f"Imported {len(df)} rows into session storage. (Replace with DB write in production)")
-        except Exception as e:
-            st.exception(e)
+    except Exception as e:
+        st.exception(e)
 
 # ------------------------------------------------------------
 # Right: Actions and utilities
