@@ -112,10 +112,12 @@ def hash_pw(plain):
 def get_mysql_conn_cached(host: str, port: int, user: str, password: str, ssl_ca_path: str = None):
     """
     Create and cache a mysql.connector connection.
-    Raises RuntimeError if mysql libs are not available.
+    If ssl_ca_path is given but file does not exist, this function will try to
+    use st.secrets['mysql']['ssl_ca'] (PEM text) to write a temporary CA file.
     """
     if not MYSQL_LIBS_AVAILABLE:
         raise RuntimeError("mysql-connector-python and bcrypt are required for DB import. Add them to requirements.txt")
+
     conn_kwargs = {
         "host": host,
         "port": port,
@@ -123,9 +125,45 @@ def get_mysql_conn_cached(host: str, port: int, user: str, password: str, ssl_ca
         "password": password,
         "autocommit": False,
     }
+
+    # handle SSL CA: prefer explicit file, else try secrets['mysql']['ssl_ca']
+    ca_path_to_use = None
     if ssl_ca_path:
-        conn_kwargs["ssl_ca"] = ssl_ca_path
+        # If provided path exists in filesystem, use it
+        if os.path.exists(ssl_ca_path):
+            ca_path_to_use = ssl_ca_path
+        else:
+            # try to find PEM content in st.secrets and write it to a temp file
+            pem_content = st.secrets.get("mysql", {}).get("ssl_ca", None)
+            if pem_content:
+                # create a persistent temp file for the session
+                tmpdir = Path(st.secrets.get("tmp_dir", "/tmp"))  # optional override via secrets
+                try:
+                    tmpdir.mkdir(parents=True, exist_ok=True)
+                except Exception:
+                    tmpdir = Path(tempfile.gettempdir())
+                tmpf = tmpdir / f"mysql_ca_{abs(hash(host))}.pem"
+                if not tmpf.exists():
+                    tmpf.write_text(pem_content)
+                ca_path_to_use = str(tmpf)
+            else:
+                # file doesn't exist and no pem content available
+                raise RuntimeError(f"SSL CA path provided but file not found: {ssl_ca_path}. Also no 'mysql.ssl_ca' secret available.")
+    else:
+        # if no ssl_ca_path provided but ssl_ca secret exists, write to temp and use
+        pem_content = st.secrets.get("mysql", {}).get("ssl_ca", None)
+        if pem_content:
+            tmpdir = Path(tempfile.gettempdir())
+            tmpf = tmpdir / f"mysql_ca_{abs(hash(host))}.pem"
+            if not tmpf.exists():
+                tmpf.write_text(pem_content)
+            ca_path_to_use = str(tmpf)
+
+    if ca_path_to_use:
+        conn_kwargs["ssl_ca"] = ca_path_to_use
         conn_kwargs["ssl_verify_cert"] = True
+
+    # create the connection and return
     return mysql.connector.connect(**conn_kwargs)
 
 def upsert_head_teacher(cursor, name, email, password_plain):
